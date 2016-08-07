@@ -1,0 +1,8 @@
+A portable program for acting on file changes on monitored path/directory.
+
+It's fully modifiable. Changes are passed to shell scripts for 
+programmable event processing.
+
+It's also written in pseudo-OOP C.
+
+Enjoy responsibly!
