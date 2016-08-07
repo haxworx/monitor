@@ -238,8 +238,6 @@ scan_recursive(const char *path)
 		struct stat fstat;
 		if (stat(buf, &fstat) < 0) continue;
 
-		if (S_ISLNK(fstat.st_mode)) continue;
-
 		if (S_ISDIR(fstat.st_mode)) {
 			directories[i++] = strdup(buf);			
 			continue;
