@@ -24,4 +24,4 @@ scripts:
 
 clean:
 	-rm $(PROGRAM) 
-	-rm $(OBJECTS)/*.o
+	-rm *.o
