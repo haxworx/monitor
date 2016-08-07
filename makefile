@@ -10,11 +10,14 @@ default: directories scripts monitor
 directories:
 	-mkdir $(OBJECTS)
 
-monitor: monitor.o main.o
+monitor: monitor.o scripts.o main.o
 	$(CC) $(CFLAGS) $(OBJECTS)/*.o -o $(PROGRAM)
 
 monitor.o: $(SRC_DIR)/monitor.c
 	$(CC) -c $(CFLAGS) $(SRC_DIR)/monitor.c -o $(OBJECTS)/$@
+
+scripts.o: $(SRC_DIR)/scripts.c
+	$(CC) -c $(CFLAGS) $(SRC_DIR)/scripts.c -o $(OBJECTS)/$@
 
 main.o: $(SRC_DIR)/main.c
 	$(CC) -c $(CFLAGS) $(SRC_DIR)/main.c -o $(OBJECTS)/$@

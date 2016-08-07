@@ -1,30 +1,6 @@
 #include "monitor.h"
+#include "scripts.h"
 
-#define CMD_LEN 1024
-
-int do_add(void *data)
-{
-	file_t *f = data;
-	char cmd[CMD_LEN];
-	snprintf(cmd, sizeof(cmd), "scripts/add.sh '%s'", f->path);
-	return system(cmd);
-}
-
-int do_del(void *data)
-{
-	file_t *f = data;
-	char cmd[CMD_LEN];
-	snprintf(cmd, sizeof(cmd), "scripts/del.sh '%s'", f->path);
-	return system(cmd);
-}
-
-int do_mod(void *data)
-{
-	file_t *f = data;
-	char cmd[CMD_LEN];
-	snprintf(cmd, sizeof(cmd), "scripts/mod.sh '%s'", f->path);
-	return system(cmd);
-}
 void usage(void)
 {
 	printf("monitor <path>\n");
@@ -64,6 +40,7 @@ int main(int argc, char **argv)
 	printf("See: http://haxlab.org\n\n");
 	printf("Monitoring: %s\n\n", directory);
 
+	/* CTRL+C or SIGTERM to exit gracefully */
 	m->mainloop(interval);
 
 	free(m);
