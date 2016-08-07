@@ -3,7 +3,7 @@ CFLAGS=-g -ggdb3 -Wall -pedantic -std=c99
 SRC_DIR=src
 SCRIPTS_DIR=scripts
 FILES= main.c monitor.c
-OBJECTS=objects
+OBJECTS=monitor.o scripts.o main.o
 
 default: scripts monitor
 
@@ -24,4 +24,4 @@ scripts:
 
 clean:
 	-rm $(PROGRAM) 
-	-rm *.o
+	-rm $(OBJECTS)
