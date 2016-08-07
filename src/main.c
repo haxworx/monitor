@@ -1,10 +1,19 @@
 #include "monitor.h"
 #include "scripts.h"
 
+#define PROGRAM_NAME "monitor"
+
 void usage(void)
 {
-	printf("monitor <path>\n");
+	printf("%s <path>\n", PROGRAM_NAME);
 	exit(EXIT_FAILURE);
+}
+
+void print_info(char *directory)
+{
+	printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n");
+	printf("See: http://haxlab.org\n\n");
+	printf("Monitoring: %s\n\n", directory);
 }
 
 int main(int argc, char **argv)
@@ -16,11 +25,6 @@ int main(int argc, char **argv)
 	if (argc < 2) usage();
 
 	directory = argv[1];
-
-	if (directory[strlen(directory) - 1] == '/'
-		&& strlen(directory) > 1) {
-		directory[strlen(directory) - 1] = '\0';
-	}
 
 	monitor_t *m = monitor_new();
 	if (!m) 
@@ -34,12 +38,7 @@ int main(int argc, char **argv)
 	m->callback_set(MONITOR_DEL, do_del);
 	m->callback_set(MONITOR_MOD, do_mod);
 
-	// daemon(1, 0);
-
-	printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n");
-	printf("See: http://haxlab.org\n\n");
-	printf("Monitoring: %s\n\n", directory);
-
+	print_info(directory);
 	/* CTRL+C or SIGTERM to exit gracefully */
 	m->mainloop(interval);
 
