@@ -5,22 +5,19 @@ SCRIPTS_DIR=scripts
 FILES= main.c monitor.c
 OBJECTS=objects
 
-default: directories scripts monitor
-
-directories:
-	-mkdir $(OBJECTS)
+default: scripts monitor
 
 monitor: monitor.o scripts.o main.o
-	$(CC) $(CFLAGS) $(OBJECTS)/*.o -o $(PROGRAM)
+	$(CC) $(CFLAGS) *.o -o $(PROGRAM)
 
 monitor.o: $(SRC_DIR)/monitor.c
-	$(CC) -c $(CFLAGS) $(SRC_DIR)/monitor.c -o $(OBJECTS)/$@
+	$(CC) -c $(CFLAGS) $(SRC_DIR)/monitor.c -o $@
 
 scripts.o: $(SRC_DIR)/scripts.c
-	$(CC) -c $(CFLAGS) $(SRC_DIR)/scripts.c -o $(OBJECTS)/$@
+	$(CC) -c $(CFLAGS) $(SRC_DIR)/scripts.c -o $@
 
 main.o: $(SRC_DIR)/main.c
-	$(CC) -c $(CFLAGS) $(SRC_DIR)/main.c -o $(OBJECTS)/$@
+	$(CC) -c $(CFLAGS) $(SRC_DIR)/main.c -o $@
 
 scripts: 
 	chmod +x $(SCRIPTS)/*.sh 
