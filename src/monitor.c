@@ -1,7 +1,5 @@
 #include "monitor.h"
 
-#define DIRS_MAX 12
-
 char *directories[DIRS_MAX];
 int _d_idx = 0;
 int _w_pos = 0;

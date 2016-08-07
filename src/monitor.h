@@ -1,6 +1,7 @@
 #if ! defined(__MONITOR_H__)
 
 #define __MONITOR_H__
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -13,6 +14,8 @@
 #include <signal.h>
 
 #define SLASH '/'
+
+#define DIRS_MAX 12
 
 #define MONITOR_NONE 0
 #define MONITOR_ADD 1 
