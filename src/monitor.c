@@ -17,6 +17,8 @@ int error(char *str)
 monitor_t *monitor_new(void)
 {
 	monitor_t *m = calloc(1, sizeof(monitor_t));
+	if (!m) return NULL;
+
 	m->error = &error;
 	m->callback_set = &monitor_callback_set;
 	m->watch_add = &monitor_watch_add;
