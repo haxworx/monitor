@@ -1,7 +1,7 @@
 #if ! defined(__MONITOR_H__)
 
 #define __MONITOR_H__
-#define _XOPEN_SOURCE 500
+#define _BSD_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

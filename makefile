@@ -4,6 +4,7 @@ SRC_DIR=src
 SCRIPTS_DIR=scripts
 FILES= main.c monitor.c
 OBJECTS=monitor.o scripts.o main.o
+VERSION=0.0.0.0.1
 
 default: scripts monitor
 
