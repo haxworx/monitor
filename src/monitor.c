@@ -83,6 +83,8 @@ file_list_add(file_t *list, const char *path, struct stat *st)
 
 	if (! c->next) {
 		c->next = calloc(1, sizeof(file_t));
+		if (!c->next)
+			error("calloc()");
 
 		c = c->next;
 		c->next = NULL;
@@ -224,6 +226,9 @@ scan_recursive(const char *path)
 	int i; 
 
 	file_t *list = calloc(1, sizeof(file_t));
+	if (!list)
+		error("calloc()");
+
 	list->next = NULL;
 
 	for (i = 0; i < sizeof(directories) / sizeof(char *); i++) {
