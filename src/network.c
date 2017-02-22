@@ -84,7 +84,7 @@ remote_file_del(void *self, char *file)
 {
 	monitor_t *mon = self;
         char path[PATH_MAX] = { 0 };
-        snprintf(path, sizeof(path), "%s%c%s", mon->directories[0], SLASH, file);
+        snprintf(path, sizeof(path), "%s", file);
 
         mon->sock = Connect(mon->hostname, DEFAULT_PORT);
         if (!mon->sock) {
@@ -123,7 +123,7 @@ int remote_file_add(void *self, char *file)
 {
 	monitor_t *mon = self;
         char path[PATH_MAX] = { 0 };
-        snprintf(path, sizeof(path), "%s%c%s", mon->directories[0], SLASH, file);
+        snprintf(path, sizeof(path), file);
 
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
@@ -133,7 +133,6 @@ int remote_file_add(void *self, char *file)
                 fprintf(stderr, "Could not connect()\n");
                 return false;
         }
-
         struct stat fstats;
         if (strlen(path) == 0) {
                 return false;
