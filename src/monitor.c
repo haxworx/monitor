@@ -3,11 +3,15 @@
 #define PROGRAM_NAME "monitor"
 
 file_t *list_prev = NULL, *list_now = NULL;
+bool first_run = false;
 bool _was_initialized = false;
 bool _is_recursive = true;
 bool quit = false;
 
+
+
 char *_get_state_file_name(void);
+file_t *file_list_state_get(const char *path);
 
 int error(char *str)
 {
@@ -44,7 +48,11 @@ int monitor_mainloop(void *self, int interval)
 		error("callbacks not initialised!");
 	*/
 
-	list_prev = monitor_files_get(self, list_prev);	
+	list_prev = file_list_state_get(mon->state_file);
+	if (!list_prev) {
+		first_run = true; // initialise!!!
+		list_prev = monitor_files_get(self, list_prev);	
+	}
 
         while (monitor_watch(self, interval) && !quit);
 
@@ -96,9 +104,8 @@ file_list_add(file_t *list, const char *path, struct stat *st)
 
 		c = c->next;
 		c->next = NULL;
-		if (st)	
-			c->stats = *st;	
-
+		c->mtime = st->st_mtime;
+		c->size = st->st_size;
 		c->path = strdup(path);
 		c->changed = 0; 
 	}
@@ -128,12 +135,10 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 
 	while (f) {
 		file_t *exists = file_exists(first, f->path);
-		if (!exists) {
+		if (!exists || first_run) {
 			f->changed = MONITOR_ADD;
 			mon->remote_add(mon->self, f->path);
-#if defined(DEBUG)		
 			printf("add file : %s\n", f->path);
-#endif
 			++changes;
 		}
 		f = f->next;
@@ -171,7 +176,7 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 	while (f) {
 		file_t *exists = file_exists(first, f->path);
 		if (exists) {
-			if (f->stats.st_mtime != exists->stats.st_mtime) {
+			if (f->mtime != exists->mtime) {
 				f->changed = MONITOR_MOD;
 				mon->remote_add(mon->self, f->path);
 				printf("mod file : %s\n", f->path);
@@ -297,7 +302,11 @@ _get_state_file_name(void)
 {
 	char buf[PATH_MAX];
 
+#if defined(__linux__) || defined(__OpenBSD__) || defined(__FreeBSD__)
 	const char *home = getenv("HOME");
+#else
+	const char *home = getenv("HOMEPATH");
+#endif
 	snprintf(buf, sizeof(buf), "%s/.%s", home, PROGRAM_NAME);
 	struct stat st;
 
@@ -313,21 +322,58 @@ _get_state_file_name(void)
 	for (int i = 0; i < strlen(cwd); i++)
 		snprintf(hashname, sizeof(hashname), "%s%x", hashname, cwd[i]);
 
-        char path[PATH_MAX];	
-	snprintf(path, sizeof(path), "%s/%s", buf, hashname);
-	return strdup(path);
+	snprintf(buf, sizeof(buf), "%s/%s", buf, hashname);
+	return strdup(buf);
+}
+
+void _chomp(char *str)
+{
+	while (*str) {
+		if (*str == '\n') {
+			*str = '\0';
+			return;
+		}
+		str++;
+	}
+}	
+
+file_t *
+file_list_state_get(const char *path)
+{
+	char buf[4096];
+	char tmp[PATH_MAX];
+	int count = 0;
+	FILE *f = fopen(path, "r");
+	if (!f) return NULL;
+
+	file_t *list = calloc(1, sizeof(file_t));
+
+	while ((fgets(buf, sizeof(buf), f)) != NULL) {
+		struct stat fstat;
+		if (sscanf(buf, "%s\t%d\t%d\n", tmp, (int *) &fstat.st_mtime, (int *) &fstat.st_size) == 3) {
+			list = file_list_add(list, tmp, &fstat);
+			++count;
+		}
+	}
+
+	fclose(f);
+
+	return list; 
 }
 
 void
-file_list_save_state(char *path, file_t *current_files)
+file_list_state_save(const char *path, file_t *current_files)
 {
 	file_t *cursor = current_files->next;
-//	printf("path is %s\n", path);
+	FILE *f = fopen(path, "w");
+	if (!f) exit(1 << 4);
+
 	while (cursor) {
-		printf("%s\n", cursor->path);
+		fprintf(f, "%s\t%d\t%d\n", cursor->path, cursor->mtime, cursor->size);
 		cursor = cursor->next;
 	}
 
+	fclose(f);
 }
 
 file_t *
@@ -339,7 +385,7 @@ _monitor_compare_lists(void *self, file_t *one, file_t *two)
 	one = two;
         
 	if (changes) {
-		file_list_save_state(m->state_file, one);
+		file_list_state_save(m->state_file, one);
 	}
 
 	return one;
@@ -352,6 +398,11 @@ monitor_watch(void *self, int poll)
 
 	list_now = monitor_files_get(self, list_now);
 	list_prev = _monitor_compare_lists(self, list_prev, list_now);  
+        
+	quit = true;
+	
+	return 0;
+
 	sleep(poll);
 
 	return 1;

@@ -25,7 +25,8 @@
 typedef struct file_t file_t;
 struct file_t {
 	char *path;
-	struct stat stats;
+	int size;
+	int mtime;
 	int changed;
 	file_t *next;
 };
