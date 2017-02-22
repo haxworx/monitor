@@ -1,7 +1,7 @@
 #include "network.h"
 #include "monitor.h"
 
-#define REMOTE_URI "DOESNOTMATTER.php"
+#define REMOTE_URI "/any"
 #define BUF_MAX 4096
 
 char *
@@ -44,7 +44,7 @@ authenticate(void *self)
 		"Action: AUTH\r\n"
 		"\r\n";
 
-	snprintf(post, sizeof(post), fmt, "/any", mon->hostname,
+	snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
 			mon->username, mon->password);
 
 	write(mon->sock, post, strlen(post));
@@ -112,7 +112,6 @@ remote_file_del(void *self, char *file)
         snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
                  content_length, mon->username, mon->password, dir_from_path,
                  file_from_path);
-
         write(mon->sock, post, strlen(post));
 
         close(mon->sock);
@@ -171,7 +170,6 @@ int remote_file_add(void *self, char *file)
         snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
                  content_length, mon->username, mon->password, file_from_path,
                  dir_from_path);
-
         write(mon->sock, post, strlen(post));
 
         int total = 0;
@@ -203,7 +201,6 @@ int remote_file_add(void *self, char *file)
 
         close(mon->sock);
         fclose(f);
-
         return true;
 }
 

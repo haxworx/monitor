@@ -52,10 +52,12 @@ int main(int argc, char **argv)
 
 	//m->watch_add(m->self, m->directory);
 	
-	/* Optional hooks / scripts to execute on changes */
-	m->callback_set(MONITOR_ADD, do_add);
-	m->callback_set(MONITOR_DEL, do_del);
-	m->callback_set(MONITOR_MOD, do_mod);
+	/* Optional scripts to execute on changes 
+	 *
+	   m->callback_set(MONITOR_ADD, do_add);
+           m->callback_set(MONITOR_DEL, do_del);
+	   m->callback_set(MONITOR_MOD, do_mod);
+	*/
 
 	print_info(m->directories[0]);
 

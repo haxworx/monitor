@@ -33,9 +33,11 @@ int monitor_mainloop(void *self, int interval)
 {
 	monitor_t *mon = self;
 	if (mon->_d_idx == 0) exit(1 << 0);
+	/*
 	if (! monitor_add_callback || ! monitor_del_callback
 		|| !monitor_mod_callback)
 		error("callbacks not initialised!");
+	*/
 
 	list_prev = monitor_files_get(self, list_prev);	
 
@@ -123,7 +125,6 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 		file_t *exists = file_exists(first, f->path);
 		if (!exists) {
 			f->changed = MONITOR_ADD;
-			monitor_add_callback(f);
 			mon->remote_add(mon->self, f->path);
 #if defined(DEBUG)		
 			printf("add file : %s\n", f->path);
@@ -146,11 +147,8 @@ _check_del_files(monitor_t *mon, file_t *first, file_t *second)
 		file_t *exists = file_exists(second, f->path);
 		if (!exists) {
 			f->changed = MONITOR_DEL;
-			monitor_del_callback(f);
 			mon->remote_del(mon->self, f->path);
-#if defined(DEBUG)
 			printf("del file : %s\n", f->path);
-#endif
 			changes++;
 		}
 		f = f->next;
@@ -170,11 +168,8 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 		if (exists) {
 			if (f->stats.st_mtime != exists->stats.st_mtime) {
 				f->changed = MONITOR_MOD;
-				monitor_mod_callback(f);
 				mon->remote_add(mon->self, f->path);
-#if defined(DEBUG)
 				printf("mod file : %s\n", f->path);
-#endif
 				changes++;
 			}
 		}
