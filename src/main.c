@@ -60,6 +60,8 @@ int main(int argc, char **argv)
 	print_info(m->directories[0]);
 
 	m->authenticate(m->self);
+	/* Get here we've authenticated */
+
 	/* CTRL+C or SIGTERM to exit gracefully */
 	m->mainloop(m->self, interval);
 
