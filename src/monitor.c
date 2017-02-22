@@ -1,10 +1,13 @@
 #include "monitor.h"
 #include "network.h"
+#define PROGRAM_NAME "monitor"
 
 file_t *list_prev = NULL, *list_now = NULL;
 bool _was_initialized = false;
 bool _is_recursive = true;
 bool quit = false;
+
+char *_get_state_file_name(void);
 
 int error(char *str)
 {
@@ -26,6 +29,8 @@ monitor_t *monitor_new(void)
 	m->authenticate = &authenticate;
 	m->remote_add = remote_file_add;
 	m->remote_del = remote_file_del;
+	m->state_file = _get_state_file_name();
+
 	return m;
 }
 
@@ -179,7 +184,7 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 	return changes;
 }
 
-void 
+int
 file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 {
 	int modifications = 0;
@@ -190,6 +195,7 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 
 	modifications += _check_mod_files(monitor, first, second);
 
+	return modifications;
 }
 
 const char *
@@ -286,14 +292,55 @@ monitor_files_get(monitor_t *mon, file_t *list)
 	return list;
 }
 
+char *
+_get_state_file_name(void)
+{
+	char buf[PATH_MAX];
+
+	const char *home = getenv("HOME");
+	snprintf(buf, sizeof(buf), "%s/.%s", home, PROGRAM_NAME);
+	struct stat st;
+
+	if (stat(buf, &st) < 0)
+		mkdir(buf, 0755);
+
+	const char *cwd = getwd(NULL);
+
+	char hashname[strlen(cwd) * 2 + 1];
+       
+	memset(hashname, 0, strlen(cwd) * 2 + 1);	
+
+	for (int i = 0; i < strlen(cwd); i++)
+		snprintf(hashname, sizeof(hashname), "%s%x", hashname, cwd[i]);
+
+        char path[PATH_MAX];	
+	snprintf(path, sizeof(path), "%s/%s", buf, hashname);
+	return strdup(path);
+}
+
+void
+file_list_save_state(char *path, file_t *current_files)
+{
+	file_t *cursor = current_files->next;
+//	printf("path is %s\n", path);
+	while (cursor) {
+		printf("%s\n", cursor->path);
+		cursor = cursor->next;
+	}
+
+}
 
 file_t *
 _monitor_compare_lists(void *self, file_t *one, file_t *two)
 {
 	monitor_t *m = self;
-	file_lists_compare(m, one, two);
+	int changes = file_lists_compare(m, one, two);
 	file_list_free(one);
 	one = two;
+        
+	if (changes) {
+		file_list_save_state(m->state_file, one);
+	}
 
 	return one;
 }
