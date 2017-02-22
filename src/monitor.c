@@ -1,8 +1,6 @@
 #include "monitor.h"
+#include "network.h"
 
-char *directories[DIRS_MAX];
-int _d_idx = 0;
-int _w_pos = 0;
 file_t *list_prev = NULL, *list_now = NULL;
 bool _was_initialized = false;
 bool _is_recursive = true;
@@ -18,27 +16,30 @@ monitor_t *monitor_new(void)
 {
 	monitor_t *m = calloc(1, sizeof(monitor_t));
 	if (!m) return NULL;
-
 	m->error = &error;
 	m->callback_set = &monitor_callback_set;
 	m->watch_add = &monitor_watch_add;
 	m->init = &monitor_init;
 	m->watch = &monitor_watch;
 	m->mainloop = &monitor_mainloop;
-
+	m->self = m;
+	m->authenticate = &authenticate;
+	m->remote_add = remote_file_add;
+	m->remote_del = remote_file_del;
 	return m;
 }
 
-int monitor_mainloop(int interval) 
+int monitor_mainloop(void *self, int interval) 
 {
-	if (_d_idx == 0) exit(1 << 0);
+	monitor_t *mon = self;
+	if (mon->_d_idx == 0) exit(1 << 0);
 	if (! monitor_add_callback || ! monitor_del_callback
 		|| !monitor_mod_callback)
-	error("callbacks not initialised!");
+		error("callbacks not initialised!");
 
-	list_prev = monitor_files_get(list_prev);	
+	list_prev = monitor_files_get(self, list_prev);	
 
-        while (monitor_watch(interval) && !quit);
+        while (monitor_watch(self, interval) && !quit);
 
 	return 1;
 }                
@@ -88,8 +89,9 @@ file_list_add(file_t *list, const char *path, struct stat *st)
 
 		c = c->next;
 		c->next = NULL;
-	
-		c->stats = *st;	
+		if (st)	
+			c->stats = *st;	
+
 		c->path = strdup(path);
 		c->changed = 0; 
 	}
@@ -112,7 +114,7 @@ file_exists(file_t *list, const char *filename)
 }
 
 int
-_check_add_files(file_t *first, file_t *second)
+_check_add_files(monitor_t *mon, file_t *first, file_t *second)
 {
 	file_t *f = second->next;
 	int changes = 0;
@@ -122,6 +124,7 @@ _check_add_files(file_t *first, file_t *second)
 		if (!exists) {
 			f->changed = MONITOR_ADD;
 			monitor_add_callback(f);
+			mon->remote_add(mon->self, f->path);
 #if defined(DEBUG)		
 			printf("add file : %s\n", f->path);
 #endif
@@ -134,7 +137,7 @@ _check_add_files(file_t *first, file_t *second)
 }
 
 int
-_check_del_files(file_t *first, file_t *second)
+_check_del_files(monitor_t *mon, file_t *first, file_t *second)
 {
 	file_t *f = first->next;
 	int changes = 0;
@@ -144,6 +147,7 @@ _check_del_files(file_t *first, file_t *second)
 		if (!exists) {
 			f->changed = MONITOR_DEL;
 			monitor_del_callback(f);
+			mon->remote_del(mon->self, f->path);
 #if defined(DEBUG)
 			printf("del file : %s\n", f->path);
 #endif
@@ -156,21 +160,22 @@ _check_del_files(file_t *first, file_t *second)
 }
 
 int
-_check_mod_files(file_t *first, file_t *second)
+_check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 {
 	file_t *f = second->next;
 	int changes = 0;
-	
+
 	while (f) {
 		file_t *exists = file_exists(first, f->path);
 		if (exists) {
 			if (f->stats.st_mtime != exists->stats.st_mtime) {
 				f->changed = MONITOR_MOD;
 				monitor_mod_callback(f);
+				mon->remote_add(mon->self, f->path);
 #if defined(DEBUG)
 				printf("mod file : %s\n", f->path);
 #endif
-				++changes;	
+				changes++;
 			}
 		}
 		f = f->next;
@@ -180,27 +185,27 @@ _check_mod_files(file_t *first, file_t *second)
 }
 
 void 
-file_lists_compare(file_t *first, file_t *second)
+file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 {
 	int modifications = 0;
+	
+	modifications += _check_del_files(monitor, first, second);
 
-	modifications += _check_del_files(first, second);
+	modifications += _check_add_files(monitor, first, second);
 
-	modifications += _check_add_files(first, second);
-
-	modifications += _check_mod_files(first, second);
+	modifications += _check_mod_files(monitor, first, second);
 
 }
 
 const char *
-directory_next(void)
+directory_next(monitor_t *mon)
 {
-	if (directories[_w_pos] == NULL) {
-		_w_pos = 0; 
+	if (mon->directories[mon->_w_pos] == NULL) {
+		mon->_w_pos = 0; 
 		return NULL;
 	}
 
-	return directories[_w_pos++];
+	return mon->directories[mon->_w_pos++];
 }
 
 void
@@ -275,11 +280,11 @@ scan_recursive(const char *path)
 }
 
 file_t *
-monitor_files_get(file_t *list)
+monitor_files_get(monitor_t *mon, file_t *list)
 {
 	const char *path;
 
-	while ((path = directory_next()) != NULL) {
+	while ((path = directory_next(mon)) != NULL) {
 		list = scan_recursive(path);
 	}
 
@@ -288,9 +293,10 @@ monitor_files_get(file_t *list)
 
 
 file_t *
-_monitor_compare_lists(file_t *one, file_t *two)
+_monitor_compare_lists(void *self, file_t *one, file_t *two)
 {
-	file_lists_compare(one, two);
+	monitor_t *m = self;
+	file_lists_compare(m, one, two);
 	file_list_free(one);
 	one = two;
 
@@ -298,32 +304,32 @@ _monitor_compare_lists(file_t *one, file_t *two)
 }
 
 int 
-monitor_watch(int poll)
+monitor_watch(void *self, int poll)
 {
 	if (!_was_initialized) return 0;
 
-	list_now = monitor_files_get(list_now);
-	list_prev = _monitor_compare_lists(list_prev, list_now);  
+	list_now = monitor_files_get(self, list_now);
+	list_prev = _monitor_compare_lists(self, list_prev, list_now);  
 	sleep(poll);
 
 	return 1;
 }
 	
 int
-monitor_watch_add(const char *path)
+monitor_watch_add(void *self, const char *path)
 {
-	if (_d_idx >= DIRS_MAX) 
+	monitor_t *mon = self;
+	if (mon->_d_idx >= DIRS_MAX) 
 		error("watch_add(): dirs limit reached!");	
 
 	struct stat dstat;
-
 	if (stat(path, &dstat) < 0)
 		error("watch_add(): directory exists? check permissions.");
 	
 	if (!S_ISDIR(dstat.st_mode))
 		error("watch_add(): not a directory.");
 	
-	directories[_d_idx++] = strdup(path);
+	mon->directories[mon->_d_idx++] = strdup(path);
 
 	return 1;
 }
@@ -335,13 +341,14 @@ void exit_safe(int sig)
 }
 
 int
-monitor_init(bool recursive)
+monitor_init(void *self, bool recursive)
 {
+	monitor_t *mon = self;
 	if (!recursive) 
 		_is_recursive = false;
 
-	directories[_d_idx] = NULL;
-	directories[DIRS_MAX - 1] = NULL;
+	mon->directories[mon->_d_idx] = NULL;
+	mon->directories[DIRS_MAX - 1] = NULL;
 
 
         signal(SIGINT, exit_safe);
