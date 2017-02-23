@@ -1,8 +1,5 @@
-A portable program for acting on file changes on monitored path/directory.
+Replacement for dropbox...
 
-It's fully modifiable. Changes are passed to shell scripts for 
-programmable event processing.
+Replacement for drop...(shitty tool I wrote).
 
-It's also written in pseudo-OOP C.
-
-Enjoy responsibly!
+Not finished.
