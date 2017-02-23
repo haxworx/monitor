@@ -5,7 +5,7 @@
 
 void usage(void)
 {
-	printf("%s username@hostname\n", PROGRAM_NAME);
+	printf("%s username@hostname:path/to/directory\n", PROGRAM_NAME);
 	exit(EXIT_FAILURE);
 }
 
@@ -18,6 +18,7 @@ void print_info(char *directory)
 
 void set_arguments(monitor_t *mon, char *cmd_string)
 {
+	char buf[PATH_MAX];
 	char *user_start = cmd_string;
 	char *user_end = strchr(user_start, '@');
 	if (!user_end) usage();
@@ -26,7 +27,13 @@ void set_arguments(monitor_t *mon, char *cmd_string)
 
 	char *host_start = user_end + 1;
 	if (!host_start) usage();
+	char *host_end = strchr(host_start, ':');
+	if (!host_end) usage();
+	*host_end = '\0';
 	mon->hostname = strdup(host_start);
+	char *directory = host_end + 1;
+	realpath(directory, buf);
+	mon->watch_add(mon->self, directory);
 }
     
 int main(int argc, char **argv)
@@ -52,7 +59,6 @@ int main(int argc, char **argv)
 	   m->callback_set(MONITOR_MOD, do_mod);
 	*/
 
-	m->watch_add(m->self, getwd(NULL));
 	print_info(m->directories[0]);
 
 	m->authenticate(m->self);

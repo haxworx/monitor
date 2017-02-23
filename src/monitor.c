@@ -10,7 +10,7 @@ bool quit = false;
 
 
 
-char *_get_state_file_name(void);
+char *_get_state_file_name(const char *path);
 file_t *file_list_state_get(const char *path);
 
 int error(char *str)
@@ -33,7 +33,6 @@ monitor_t *monitor_new(void)
 	m->authenticate = &authenticate;
 	m->remote_add = remote_file_add;
 	m->remote_del = remote_file_del;
-	m->state_file = _get_state_file_name();
 
 	return m;
 }
@@ -87,6 +86,26 @@ file_list_free(file_t *list)
 		free(c);
 		c = next;
 	}
+}
+
+char *
+_escaped_path(char *path)
+{
+	char buf[strlen(path) * 2 + 1];
+	memset(&buf, 0, strlen(path) *2 + 1);
+
+	char *s = path;
+	for (int i = 0; i < strlen(path); i++) {
+		if (*s != ' ')
+			buf[i] = *s;
+		else {
+			buf[i++] = '\\';
+			buf[i] = ' ';
+		}	
+		s++;
+	}
+
+	return strdup(buf);
 }
 
 file_t * 
@@ -298,10 +317,11 @@ monitor_files_get(monitor_t *mon, file_t *list)
 }
 
 char *
-_get_state_file_name(void)
+_get_state_file_name(const char *path)
 {
 	char buf[PATH_MAX];
-
+	char absolute[PATH_MAX];
+	realpath(path, absolute);
 #if defined(__linux__) || defined(__OpenBSD__) || defined(__FreeBSD__)
 	const char *home = getenv("HOME");
 #else
@@ -310,18 +330,17 @@ _get_state_file_name(void)
 	snprintf(buf, sizeof(buf), "%s/.%s", home, PROGRAM_NAME);
 	struct stat st;
 
+	// make directory to store state file lists...
 	if (stat(buf, &st) < 0)
 		mkdir(buf, 0755);
 
-	const char *cwd = getwd(NULL);
-
-	char hashname[strlen(cwd) * 2 + 1];
+	char hashname[strlen(absolute) * 2 + 1];
        
-	memset(hashname, 0, strlen(cwd) * 2 + 1);	
+	memset(hashname, 0, strlen(absolute) * 2 + 1);	
+	for (int i = 0; i < strlen(absolute); i++)
+		snprintf(hashname, sizeof(hashname), "%s%2x", hashname, absolute[i]);
 
-	for (int i = 0; i < strlen(cwd); i++)
-		snprintf(hashname, sizeof(hashname), "%s%x", hashname, cwd[i]);
-
+	// return path for unique state file path (unique to location)
 	snprintf(buf, sizeof(buf), "%s/%s", buf, hashname);
 	return strdup(buf);
 }
@@ -423,6 +442,8 @@ monitor_watch_add(void *self, const char *path)
 		error("watch_add(): not a directory.");
 	
 	mon->directories[mon->_d_idx++] = strdup(path);
+
+	mon->state_file = _get_state_file_name(path);
 
 	return 1;
 }
