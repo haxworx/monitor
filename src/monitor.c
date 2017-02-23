@@ -1,6 +1,7 @@
 #include "monitor.h"
 #include "network.h"
 #define PROGRAM_NAME "monitor"
+#include <ctype.h>
 
 file_t *list_prev = NULL, *list_now = NULL;
 bool first_run = false;
@@ -88,28 +89,20 @@ file_list_free(file_t *list)
 	}
 }
 
-char *
-_escaped_path(char *path)
+void
+_trim(char *text)
 {
-	char buf[strlen(path) * 2 + 1];
-	memset(&buf, 0, strlen(path) *2 + 1);
-
-	char *s = path;
-	for (int i = 0; i < strlen(path); i++) {
-		if (*s != ' ')
-			buf[i] = *s;
-		else {
-			buf[i++] = '\\';
-			buf[i] = ' ';
-		}	
+	char *s = text;
+	for (int i = 0; i < strlen(text); i++) {
+		if (isspace(*s)) 
+			*s = '_';
 		s++;
 	}
-
-	return strdup(buf);
 }
 
+
 file_t * 
-file_list_add(file_t *list, const char *path, struct stat *st)
+file_list_add(file_t *list, char *path, struct stat *st)
 {
 	file_t *c = list;
 
@@ -120,11 +113,11 @@ file_list_add(file_t *list, const char *path, struct stat *st)
 		c->next = calloc(1, sizeof(file_t));
 		if (!c->next)
 			error("calloc()");
-
 		c = c->next;
 		c->next = NULL;
 		c->mtime = st->st_mtime;
 		c->size = st->st_size;
+		_trim(path);
 		c->path = strdup(path);
 		c->changed = 0; 
 	}
@@ -138,8 +131,9 @@ file_exists(file_t *list, const char *filename)
 	file_t *f = list->next;
 
 	while (f) {
-		if (!strcmp(f->path, filename))
+		if (!strcmp(f->path, filename)) {
 			return f;
+		}
 		f = f->next;
 	}
 	

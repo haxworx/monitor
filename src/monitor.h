@@ -83,7 +83,7 @@ monitor_t *monitor_new(void);
 /* Internal functions */
 	
 void file_list_free(file_t *list);
-file_t *file_list_add(file_t *list, const char *path, struct stat *st);
+file_t *file_list_add(file_t *list, char *path, struct stat *st);
 file_t *file_exists(file_t *list, const char *filename);
 int file_lists_compare(monitor_t *monitor, file_t *first, file_t *second);
 const char *directory_next(monitor_t *mon);
