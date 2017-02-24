@@ -1,5 +1,6 @@
 #include "network.h"
 #include "monitor.h"
+#include <unistd.h>
 
 #define REMOTE_URI "/any"
 #define BUF_MAX 4096
@@ -20,13 +21,22 @@ _file_from_path(char *path)
 char *
 _directory_from_path(char *path)
 {
+	int i;
+	char buf[PATH_MAX + 1];
+	char *cwd = getcwd(buf, PATH_MAX + 1);
+
 	if (!path) return NULL;
-	char *t = strrchr(path, '/');
-	if (*t) {
-		t++;
-		return t;
+	
+	for (i = 0; cwd[i] == path[i]; i++) {
+
 	}
-	return path;
+	char *path_begin = &path[i];
+	char *t = strrchr(path_begin, '/');
+	if (t) {
+		*t = '\0';
+		return path_begin;
+	}
+	return path_begin;
 }
 
 int
@@ -110,7 +120,7 @@ remote_file_del(void *self, char *file)
 
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
-        char *dir_from_path = _directory_from_path(dirname);
+        char *dir_from_path = _directory_from_path(path);
 
         char post[BUF_MAX] = { 0 };
         char *fmt =
@@ -177,7 +187,7 @@ int remote_file_add(void *self, char *file)
         int content_length = fstats.st_size;
 
         char *file_from_path = _file_from_path(path);
-        char *dir_from_path = _directory_from_path(dirname);
+        char *dir_from_path = _directory_from_path(path);
 
         char post[BUF_MAX] = { 0 };
         char *fmt =

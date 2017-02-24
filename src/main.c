@@ -11,8 +11,8 @@ void usage(void)
 
 void print_info(char *directory)
 {
-	printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n");
-	printf("See: http://haxlab.org\n\n");
+	printf("(c) Copyright 2016-17. Al Poole <netstar@gmail.com>.\n");
+	printf("See: http://haxlab.org\n");
 	printf("Monitoring: %s\n\n", directory);
 }
 
@@ -40,7 +40,7 @@ void set_arguments(monitor_t *mon, char *cmd_string)
 int main(int argc, char **argv)
 {
 	time_t interval = 3;
-	bool recursive = false;
+	bool recursive = true;
 	
 	if (argc < 2) usage();
 
@@ -69,7 +69,9 @@ int main(int argc, char **argv)
 	m->mainloop(m->self, interval);
 
 	free(m);
-		
+	
+	printf("done!\n");
+
 	return EXIT_SUCCESS;
 }
 

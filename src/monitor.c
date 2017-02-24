@@ -21,6 +21,27 @@ int error(char *str)
 	exit(1 << 7);
 }
 
+#define JOBS_MAX 4
+
+int n_jobs = 0;
+
+void
+wait_for_job(void)
+{
+	pid_t pid = wait(NULL);
+	if (pid <= 0)
+		error("wait");	
+	--n_jobs;
+}
+
+void 
+wait_for_all_jobs(void)
+{
+	while (n_jobs) {
+		wait_for_job();
+	}
+}
+
 monitor_t *monitor_new(void)
 {
 	monitor_t *m = calloc(1, sizeof(monitor_t));
@@ -101,7 +122,6 @@ _trim(char *text)
 	}
 }
 
-
 file_t * 
 file_list_add(file_t *list, char *path, struct stat *st)
 {
@@ -118,7 +138,6 @@ file_list_add(file_t *list, char *path, struct stat *st)
 		c->next = NULL;
 		c->mtime = st->st_mtime;
 		c->size = st->st_size;
-		_trim(path);
 		c->path = strdup(path);
 		c->changed = 0; 
 	}
@@ -139,26 +158,6 @@ file_exists(file_t *list, const char *filename)
 	}
 	
 	return NULL;
-}
-
-#define JOBS_MAX 4
-int n_jobs = 0;
-
-void
-wait_for_job(void)
-{
-	pid_t pid = wait(NULL);
-	if (pid <= 0)
-		error("wait");	
-	--n_jobs;
-}
-
-void 
-wait_for_all_jobs(void)
-{
-	while (n_jobs) {
-		wait_for_job();
-	}
 }
 
 int
@@ -182,7 +181,10 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 				exit(0);
 			}
 			++n_jobs;
-			printf("add file : %s\n", f->path);
+			if (!first_run)
+				printf("add file : %s\n", f->path);
+			else
+				printf("init file : %s\n", f->path);
 			++changes;
 		}
 		f = f->next;
@@ -256,7 +258,9 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 
 	if (modifications) {
 		wait_for_all_jobs();
+		printf("total of %d actions\n", modifications);
 	}
+
 	return modifications;
 }
 
@@ -398,8 +402,6 @@ file_t *
 file_list_state_get(const char *path)
 {
 	char buf[4096];
-	char tmp[PATH_MAX];
-	int count = 0;
 	FILE *f = fopen(path, "r");
 	if (!f) return NULL;
 
@@ -407,10 +409,26 @@ file_list_state_get(const char *path)
 
 	while ((fgets(buf, sizeof(buf), f)) != NULL) {
 		struct stat fstat;
-		if (sscanf(buf, "%s\t%d\t%d\n", tmp, (int *) &fstat.st_mtime, (int *) &fstat.st_size) == 3) {
-			list = file_list_add(list, tmp, &fstat);
-			++count;
-		}
+                if (buf[0] == '#') continue;
+
+		char *path_start = buf;
+		char *path_end = strchr(path_start, '\t');
+		if (!path_end) continue;
+		*path_end = '\0';
+
+		char *mtime_start = path_end + 1;
+		char *mtime_end = strchr(mtime_start, '\t');
+		if (!mtime_end) continue;
+		*mtime_end = '\0';
+
+		char *size_start = mtime_end + 1;
+		if (!size_start) continue;
+
+
+		fstat.st_size = atoi(size_start);
+		fstat.st_mtime = atoi(mtime_start);
+
+		list = file_list_add(list, path_start, &fstat);
 	}
 
 	fclose(f);
