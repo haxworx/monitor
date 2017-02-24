@@ -41,6 +41,7 @@ http.createServer(function (req, res) {
        
         var outFile = fs.createWriteStream(path);
         req.pipe(outFile);
+        console.log("created " + path);
     } 
 
     if (action === "DEL") {
@@ -48,10 +49,11 @@ http.createServer(function (req, res) {
         fs.unlink(path, function(err) { 
 		if (err) console.err(err);
 	});
+	console.log("deleted " + path);
     }
 }
 }).listen(12345);
 
 console.log("Copyright (c) 2015. Al Poole <netstar@gmail.com>");
-console.log("Drop Server Running!");
+console.log("Dropsy Server Running!");
 
