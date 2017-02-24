@@ -57,6 +57,13 @@ http.createServer(function (req, res) {
        	req.pipe(outFile);
     }
 
+    req.on('begin', function() {
+	mkdirp(directory, function(err) {
+		if (err) console.err(err)
+		else console.log("created " + directory)
+	});
+    });
+
     var len = '';
     req.on('data', function(chunk) {
         len += chunk.length;
