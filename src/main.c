@@ -32,8 +32,9 @@ void set_arguments(monitor_t *mon, char *cmd_string)
 	*host_end = '\0';
 	mon->hostname = strdup(host_start);
 	char *directory = host_end + 1;
+	// fix this
 	realpath(directory, buf);
-	mon->watch_add(mon->self, directory);
+	mon->watch_add(mon->self, buf);
 }
     
 int main(int argc, char **argv)
