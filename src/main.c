@@ -40,7 +40,7 @@ void set_arguments(monitor_t *mon, char *cmd_string)
 int main(int argc, char **argv)
 {
 	time_t interval = 3;
-	bool recursive = true;
+	bool recursive = false;
 	
 	if (argc < 2) usage();
 

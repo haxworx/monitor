@@ -17,6 +17,18 @@ _file_from_path(char *path)
 	return path;
 }
 
+char *
+_directory_from_path(char *path)
+{
+	if (!path) return NULL;
+	char *t = strrchr(path, '/');
+	if (*t) {
+		t++;
+		return t;
+	}
+	return path;
+}
+
 int
 authenticate(void *self)
 {
@@ -98,7 +110,7 @@ remote_file_del(void *self, char *file)
 
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
-        char *dir_from_path = _file_from_path(dirname);
+        char *dir_from_path = _directory_from_path(dirname);
 
         char post[BUF_MAX] = { 0 };
         char *fmt =
@@ -119,12 +131,22 @@ remote_file_del(void *self, char *file)
         return true;
 }
 
+void 
+_untrim(char *str)
+{
+	char *s = str;
+	while (*s) {
+		if (*s == '_')
+			*s = ' ';
+		s++;
+	}
+}
 int remote_file_add(void *self, char *file)
 {
 	monitor_t *mon = self;
         char path[PATH_MAX] = { 0 };
         snprintf(path, sizeof(path), file);
-
+	_untrim(path);
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
 
@@ -155,7 +177,7 @@ int remote_file_add(void *self, char *file)
         int content_length = fstats.st_size;
 
         char *file_from_path = _file_from_path(path);
-        char *dir_from_path = _file_from_path(dirname);
+        char *dir_from_path = _directory_from_path(dirname);
 
         char post[BUF_MAX] = { 0 };
         char *fmt =
@@ -170,7 +192,6 @@ int remote_file_add(void *self, char *file)
                  content_length, mon->username, mon->password, file_from_path,
                  dir_from_path);
         write(mon->sock, post, strlen(post));
-
         int total = 0;
 
         int size = content_length;
