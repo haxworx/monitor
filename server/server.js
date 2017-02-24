@@ -4,8 +4,11 @@
 //
 // http://haxlab.org
 //
+// Proof of concept server for monitor
+
 
 var http = require('http');
+var mkdirp = require('mkdirp');
 
 function respondCode(res, val)
 {
@@ -19,11 +22,6 @@ function basicError(err)
     if (err) {
         console.log("basicError");	
     }
-}
-
-function initialise()
-{
-
 }
 
 http.createServer(function (req, res) {
@@ -48,7 +46,11 @@ http.createServer(function (req, res) {
         var path = directory + "/" + filename;
         // wuick fix
         if (!fs.existsSync(directory)) {
-                fs.mkdir(directory, [, 0755]);
+		console.log(directory);
+		mkdirp(directory, function(err) {
+			if (err) console.err(err)
+			else console.log("created " + directory)
+		});
         }
 
         var outFile = fs.createWriteStream(path);
@@ -71,7 +73,10 @@ http.createServer(function (req, res) {
 		
         if (action === "ADD") {
             if (!fs.existsSync(directory)) {
-                fs.mkdir(directory, [, 0755]);
+		mkdirp(directory, function(err) {
+			if (err) console.err(err)
+			else console.log("created " + directory)
+		});
             }
         } 
         if (filename != null && directory != null && action != null) {
