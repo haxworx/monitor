@@ -1,6 +1,7 @@
 #include "monitor.h"
 #include "network.h"
 #define PROGRAM_NAME "monitor"
+#include <sys/wait.h>
 #include <ctype.h>
 
 file_t *list_prev = NULL, *list_now = NULL;
@@ -140,6 +141,26 @@ file_exists(file_t *list, const char *filename)
 	return NULL;
 }
 
+#define JOBS_MAX 4
+int n_jobs = 0;
+
+void
+wait_for_job(void)
+{
+	pid_t pid = wait(NULL);
+	if (pid <= 0)
+		error("wait");	
+	--n_jobs;
+}
+
+void 
+wait_for_all_jobs(void)
+{
+	while (n_jobs) {
+		wait_for_job();
+	}
+}
+
 int
 _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 {
@@ -150,7 +171,17 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 		file_t *exists = file_exists(first, f->path);
 		if (!exists || first_run) {
 			f->changed = MONITOR_ADD;
-			mon->remote_add(mon->self, f->path);
+			if (n_jobs == JOBS_MAX) {
+				wait_for_job();
+			}
+			pid_t pid = fork();
+			if (pid < 0)
+				error("fork");
+			else if (pid == 0) {
+				mon->remote_add(mon->self, f->path);
+				exit(0);
+			}
+			++n_jobs;
 			printf("add file : %s\n", f->path);
 			++changes;
 		}
@@ -191,7 +222,17 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 		if (exists) {
 			if (f->mtime != exists->mtime) {
 				f->changed = MONITOR_MOD;
-				mon->remote_add(mon->self, f->path);
+				if (n_jobs == JOBS_MAX) {
+					wait_for_job();
+				}
+				pid_t pid = fork();
+				if (pid < 0)
+					error("fork");
+				else if (pid == 0) {
+					mon->remote_add(mon->self, f->path);
+					exit(0);
+				}
+				++n_jobs;
 				printf("mod file : %s\n", f->path);
 				changes++;
 			}
@@ -213,6 +254,9 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 
 	modifications += _check_mod_files(monitor, first, second);
 
+	if (modifications) {
+		wait_for_all_jobs();
+	}
 	return modifications;
 }
 
