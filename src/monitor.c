@@ -110,17 +110,6 @@ file_list_free(file_t *list)
 	}
 }
 
-void
-_trim(char *text)
-{
-	char *s = text;
-	for (int i = 0; i < strlen(text); i++) {
-		if (isspace(*s)) 
-			*s = '_';
-		s++;
-	}
-}
-
 file_t * 
 file_list_add(file_t *list, char *path, struct stat *st)
 {

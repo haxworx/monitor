@@ -141,22 +141,11 @@ remote_file_del(void *self, char *file)
         return true;
 }
 
-void 
-_untrim(char *str)
-{
-	char *s = str;
-	while (*s) {
-		if (*s == '_')
-			*s = ' ';
-		s++;
-	}
-}
 int remote_file_add(void *self, char *file)
 {
 	monitor_t *mon = self;
         char path[PATH_MAX] = { 0 };
         snprintf(path, sizeof(path), file);
-	_untrim(path);
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
 
@@ -179,6 +168,7 @@ int remote_file_add(void *self, char *file)
                     ("Unable to open filename this should not happen!");
                      
         }
+
 #define CHUNK 1024
 
         char buffer[CHUNK + 1] = { 0 };
