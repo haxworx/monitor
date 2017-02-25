@@ -10,17 +10,13 @@ import(
 func ProcessPost(request *http.Request, dir string, file string) {
 	var buf = request.Body;
 
+        os.MkdirAll(dir, 0777);
+	fmt.Printf("making %s\n", dir);
+
 	bytes, err := ioutil.ReadAll(buf);
 	if err != nil {
 		return;	
 	}
-
-	if dir == "" || file == "" {
-		return;
-	}
-
-	fmt.Printf("making %s\n", dir);
-	os.MkdirAll(dir, 0777);
 
 	var path = dir + "/" + file;
 
@@ -43,7 +39,8 @@ func RespondCode(response http.ResponseWriter, value int) {
 
 func PostRequest(response http.ResponseWriter, request *http.Request) {
 	if request.Method != "POST" {
-		http.Error(response, "POST ONLY", http.StatusMethodNotAllowed);	
+		http.Error(response, "POST ONLY", http.StatusBadRequest);
+		return;
 	}
 
 	var user = request.Header.Get("username");
@@ -54,20 +51,26 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 
 	if user != "username" || pass != "password" {
 		RespondCode(response, 1);
+		return;
 	} else {
-		RespondCode(response, 0);
 	}
 
 	switch action {
 	case "ADD":
+		if directory == "" || file == "" {
+			return;
+		}
+
 		ProcessPost(request, directory, file);
 	case "DEL":
 		var path = directory + "/" + file;
 		os.Remove(path);
 		RemoveEmptyDirs(directory);
 	case "AUTH":
+		RespondCode(response, 0);
+		return;
 	default:
-		http.Error(response, "BOGUS ACTION", http.StatusMethodNotAllowed);
+		http.Error(response, "BOGUS ACTION", http.StatusBadRequest);
 	};
 }
 
