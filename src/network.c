@@ -173,7 +173,6 @@ int remote_file_add(void *self, char *file)
         if (stat(path, &fstats) < 0) {
                 return false;
         }
-
         FILE *f = fopen(path, "rb");
         if (f == NULL) {
                 mon->error

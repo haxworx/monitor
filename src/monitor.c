@@ -1,6 +1,5 @@
 #include "monitor.h"
 #include "network.h"
-#define PROGRAM_NAME "monitor"
 #include <sys/wait.h>
 #include <ctype.h>
 

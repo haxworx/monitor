@@ -1,8 +1,6 @@
 #include "monitor.h"
 #include "scripts.h"
 
-#define PROGRAM_NAME "monitor"
-
 void usage(void)
 {
 	printf("%s username@hostname:path/to/directory\n", PROGRAM_NAME);
@@ -32,7 +30,6 @@ void set_arguments(monitor_t *mon, char *cmd_string)
 	*host_end = '\0';
 	mon->hostname = strdup(host_start);
 	char *directory = host_end + 1;
-	// fix this
 	realpath(directory, buf);
 	mon->watch_add(mon->self, buf);
 }
@@ -52,13 +49,6 @@ int main(int argc, char **argv)
 
 	m->init(m->self, recursive);
 	set_arguments(m, cmd_string);
-
-	/* Optional scripts to execute on changes 
-	 *
-	   m->callback_set(MONITOR_ADD, do_add);
-           m->callback_set(MONITOR_DEL, do_del);
-	   m->callback_set(MONITOR_MOD, do_mod);
-	*/
 
 	print_info(m->directories[0]);
 

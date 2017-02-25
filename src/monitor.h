@@ -1,5 +1,6 @@
 #if ! defined(__MONITOR_H__)
 
+#define PROGRAM_NAME "dropsy"
 #define __MONITOR_H__
 #define _DEFAULT_SOURCE
 #include <stdio.h>
