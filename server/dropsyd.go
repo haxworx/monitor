@@ -1,5 +1,7 @@
 package main;
 
+// as always a work in progres...
+
 import(
 	"fmt"
 	"net/http"
@@ -11,7 +13,6 @@ func ProcessPost(request *http.Request, dir string, file string) {
 	var buf = request.Body;
 
         os.MkdirAll(dir, 0777);
-	fmt.Printf("making %s\n", dir);
 
 	bytes, err := ioutil.ReadAll(buf);
 	if err != nil {
@@ -27,11 +28,25 @@ func ProcessPost(request *http.Request, dir string, file string) {
 }
 
 
-func RemoveEmptyDirs(directory string) {
-	// do this later potato!
+func DirIsEmpty(directory string) bool {
+	count := 0
+	files, err := ioutil.ReadDir(directory);
+	if err != nil {
+		return false
+	}
+
+	for _, file := range files {
+		count++;
+		fmt.Println(file);
+	}
+	if count > 0 {
+		return false;
+	}
+
+	return true;
 }
 
-func RespondCode(response http.ResponseWriter, value int) {
+func AuthResponse(response http.ResponseWriter, value int) {
 	response.WriteHeader(http.StatusOK);
 	var format = fmt.Sprintf("status: %d\r\n\r\n", value);
 	response.Write([]byte(format));
@@ -50,9 +65,8 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 	var directory = request.Header.Get("directory");
 
 	if user != "username" || pass != "password" {
-		RespondCode(response, 1);
+		AuthResponse(response, 1);
 		return;
-	} else {
 	}
 
 	switch action {
@@ -60,17 +74,27 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 		if directory == "" || file == "" {
 			return;
 		}
-
-		ProcessPost(request, directory, file);
+		ProcessPost(request, directory, file)
 	case "DEL":
-		var path = directory + "/" + file;
-		os.Remove(path);
-		RemoveEmptyDirs(directory);
+		var path = directory + "/" + file
+		fmt.Printf("remove %s\n", path)
+
+		fi, err := os.Stat(path)
+		if err != nil {
+			return
+		}
+
+		mode := fi.Mode()
+		if !mode.IsDir() {
+			os.Remove(path)
+			if DirIsEmpty(directory) {
+				os.Remove(directory)
+			}
+		}
 	case "AUTH":
-		RespondCode(response, 0);
-		return;
+		AuthResponse(response, 0)
 	default:
-		http.Error(response, "BOGUS ACTION", http.StatusBadRequest);
+		http.Error(response, "Not today", http.StatusBadRequest)
 	};
 }
 

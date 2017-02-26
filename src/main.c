@@ -43,22 +43,23 @@ int main(int argc, char **argv)
 
 	char *cmd_string = argv[1];
 
-	monitor_t *m = monitor_new();
-	if (!m) 
-		m->error("monitor_new()");
+	monitor_t *mon = monitor_new();
+	if (!mon) 
+		mon->error("monitor_new()");
 
-	m->init(m->self, recursive);
-	set_arguments(m, cmd_string);
+	mon->init(mon->self, recursive);
 
-	print_info(m->directories[0]);
+	set_arguments(mon, cmd_string);
 
-	m->authenticate(m->self);
+	print_info(mon->directories[0]);
+
+	mon->authenticate(mon->self);
 	/* Get here we've authenticated */
 
 	/* CTRL+C or SIGTERM to exit gracefully */
-	m->mainloop(m->self, interval);
+	mon->mainloop(mon->self, interval);
 
-	free(m);
+	free(mon);
 	
 	printf("done!\n");
 
