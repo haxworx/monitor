@@ -35,14 +35,10 @@ func DirIsEmpty(directory string) bool {
 		return false
 	}
 
-	for _, file := range files {
-		count++;
-		fmt.Println(file);
-	}
+	count = len(files);
 	if count > 0 {
 		return false;
 	}
-
 	return true;
 }
 
@@ -88,6 +84,7 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 		if !mode.IsDir() {
 			os.Remove(path)
 			if DirIsEmpty(directory) {
+				fmt.Printf("rmdir %s\n", directory);
 				os.Remove(directory)
 			}
 		}
