@@ -63,6 +63,7 @@ struct monitor_t {
 	char *username;
 	char *password;
 	char *directories[DIRS_MAX];
+	int cpu_count;
 	int _d_idx, _w_pos;
 	char *state_file;
 	fn_init init;
