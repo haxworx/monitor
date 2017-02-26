@@ -4,6 +4,7 @@ package main;
 
 import(
 	"fmt"
+	"strings"
 	"net/http"
 	"io/ioutil"
 	"os"
@@ -83,9 +84,12 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 		mode := fi.Mode()
 		if !mode.IsDir() {
 			os.Remove(path)
-			if DirIsEmpty(directory) {
+			for DirIsEmpty(directory) {
 				fmt.Printf("rmdir %s\n", directory);
 				os.Remove(directory)
+				end := strings.LastIndex(directory, "/");
+				if end < 0 { break }
+				directory = directory[0:end];
 			}
 		}
 	case "AUTH":

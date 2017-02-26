@@ -237,19 +237,35 @@ int
 file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 {
 	int modifications = 0;
+	int total = 0;
+
+	// this ordering is important 
+	// we are using concurrency here...so...
+	// don't mix change types...
 	
-	modifications += _check_del_files(monitor, first, second);
-
-	modifications += _check_add_files(monitor, first, second);
-
-	modifications += _check_mod_files(monitor, first, second);
-
-	if (modifications) {
-		wait_for_all_jobs();
-		printf("total of %d actions\n", modifications);
+	modifications = _check_add_files(monitor, first, second);
+        if (modifications) {
+		total += modifications;
+		wait_for_all_jobs();	
 	}
 
-	return modifications;
+	modifications = _check_mod_files(monitor, first, second);
+        if (modifications) {
+		total += modifications;
+		wait_for_all_jobs();	
+	}
+	
+	modifications = _check_del_files(monitor, first, second);
+        if (modifications) {
+		total += modifications;
+		wait_for_all_jobs();	
+	}
+
+	if (total) {
+		printf("total of %d actions\n", total);
+	}
+
+	return total;
 }
 
 const char *
