@@ -1,4 +1,5 @@
 #include "monitor.h"
+#include "system.h"
 #include "scripts.h"
 
 void usage(void)
@@ -31,7 +32,9 @@ void set_arguments(monitor_t *mon, char *cmd_string)
 	mon->hostname = strdup(host_start);
 	char *directory = host_end + 1;
 	realpath(directory, buf);
+
 	mon->watch_add(mon->self, buf);
+	mon->cpu_count = system_cpu_count();
 }
     
 int main(int argc, char **argv)

@@ -20,8 +20,6 @@ int error(char *str)
 	exit(1 << 7);
 }
 
-#define JOBS_MAX 4
-
 int n_jobs = 0;
 
 void
@@ -158,7 +156,7 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 		file_t *exists = file_exists(first, f->path);
 		if (!exists || first_run) {
 			f->changed = MONITOR_ADD;
-			if (n_jobs == JOBS_MAX) {
+			if (n_jobs == mon->cpu_count) {
 				wait_for_job();
 			}
 			pid_t pid = fork();
@@ -212,7 +210,7 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 		if (exists) {
 			if (f->mtime != exists->mtime) {
 				f->changed = MONITOR_MOD;
-				if (n_jobs == JOBS_MAX) {
+				if (n_jobs == mon->cpu_count) {
 					wait_for_job();
 				}
 				pid_t pid = fork();
