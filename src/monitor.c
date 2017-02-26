@@ -76,17 +76,19 @@ int monitor_mainloop(void *self, int interval)
 }                
 
 
-int monitor_callback_set(int type, callback func)
+int monitor_callback_set(void *self, int type, callback func)
 {
+	monitor_t *mon = self;
+
         switch (type) {
         case MONITOR_ADD:
-                monitor_add_callback = func;
+                mon->add_callback = func;
                 break;
         case MONITOR_DEL:
-                monitor_del_callback = func;
+                mon->del_callback = func;
                 break;
         case MONITOR_MOD:
-                monitor_mod_callback = func;
+                mon->mod_callback = func;
         };
 
 	return 1;
@@ -152,6 +154,9 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 	while (f) {
 		file_t *exists = file_exists(first, f->path);
 		if (!exists || first_run) {
+			if (mon->add_callback)
+				mon->add_callback(f);
+
 			f->changed = MONITOR_ADD;
 			if (n_jobs == mon->cpu_count) {
 				wait_for_job();
@@ -186,6 +191,9 @@ _check_del_files(monitor_t *mon, file_t *first, file_t *second)
 		file_t *exists = file_exists(second, f->path);
 		if (!exists) {
 			f->changed = MONITOR_DEL;
+			if (mon->del_callback) 
+				mon->del_callback(f);
+
 			mon->remote_del(mon->self, f->path);
 			printf("del file : %s\n", f->path);
 			changes++;
@@ -207,6 +215,9 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 		if (exists) {
 			if (f->mtime != exists->mtime) {
 				f->changed = MONITOR_MOD;
+				if (mon->mod_callback)
+					mon->mod_callback(f);
+
 				if (n_jobs == mon->cpu_count) {
 					wait_for_job();
 				}

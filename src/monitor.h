@@ -34,24 +34,20 @@ struct file_t {
 
 typedef int (*callback)(void *data);
 
-callback monitor_add_callback;
-callback monitor_del_callback;
-callback monitor_mod_callback;
-
-typedef int (*fn_callback_set)(int type, callback);
+typedef int (*fn_callback_set)(void *self, int type, callback);
 typedef int (*fn_watch_add)(void *self, const char * path);
 typedef int (*fn_init)(void *self, char *cmd_string);
 typedef int (*fn_watch)(void *self, int poll_interval);
-typedef int (*fn_error)(char *string);
 typedef int (*fn_authenticate)(void *self);
 typedef int (*fn_remote_del)(void *self, char *file);
 typedef int (*fn_remote_add)(void *self, char *file);
+typedef int (*fn_error)(char *string);
 
 /* External functions */
 int monitor_watch(void *self, int poll_interval);
 int monitor_mainloop(void *self, int poll_interval);
 int monitor_watch_add(void *self, const char *path);
-int monitor_callback_set(int type, callback);
+int monitor_callback_set(void *self, int type, callback);
 int monitor_init(void *self, char *);
 int error(char *);
 

@@ -1,4 +1,5 @@
 #include "monitor.h"
+#include "scripts.h"
 
 void usage(void)
 {
@@ -28,6 +29,11 @@ int main(int argc, char **argv)
 	if (!mon->init(mon->self, cmd_string)) {
 		usage();	
 	}
+
+	/* Enable these to run shell scripts on file change */
+ 	// mon->callback_set(mon->self, MONITOR_ADD, &do_add);
+ 	// mon->callback_set(mon->self, MONITOR_DEL, &do_del);
+	// mon->callback_set(mon->self, MONITOR_MOD, &do_mod);
 
 	print_info(mon->directories[0]);
 
