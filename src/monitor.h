@@ -40,7 +40,7 @@ callback monitor_mod_callback;
 
 typedef int (*fn_callback_set)(int type, callback);
 typedef int (*fn_watch_add)(void *self, const char * path);
-typedef int (*fn_init)(void *self, bool recursive);
+typedef int (*fn_init)(void *self, char *cmd_string);
 typedef int (*fn_watch)(void *self, int poll_interval);
 typedef int (*fn_error)(char *string);
 typedef int (*fn_authenticate)(void *self);
@@ -52,7 +52,7 @@ int monitor_watch(void *self, int poll_interval);
 int monitor_mainloop(void *self, int poll_interval);
 int monitor_watch_add(void *self, const char *path);
 int monitor_callback_set(int type, callback);
-int monitor_init(void *self, bool);
+int monitor_init(void *self, char *);
 int error(char *);
 
 typedef struct monitor_t monitor_t;
@@ -66,6 +66,7 @@ struct monitor_t {
 	int cpu_count;
 	int _d_idx, _w_pos;
 	char *state_file;
+	bool initialized;
 	fn_init init;
 	fn_watch_add watch_add;	
 	fn_watch watch;

@@ -1,6 +1,4 @@
 #include "monitor.h"
-#include "system.h"
-#include "scripts.h"
 
 void usage(void)
 {
@@ -15,32 +13,9 @@ void print_info(char *directory)
 	printf("Monitoring: %s\n\n", directory);
 }
 
-void set_arguments(monitor_t *mon, char *cmd_string)
-{
-	char buf[PATH_MAX];
-	char *user_start = cmd_string;
-	char *user_end = strchr(user_start, '@');
-	if (!user_end) usage();
-	*user_end = '\0';
-	mon->username = strdup(user_start);
-
-	char *host_start = user_end + 1;
-	if (!host_start) usage();
-	char *host_end = strchr(host_start, ':');
-	if (!host_end) usage();
-	*host_end = '\0';
-	mon->hostname = strdup(host_start);
-	char *directory = host_end + 1;
-	realpath(directory, buf);
-
-	mon->watch_add(mon->self, buf);
-	mon->cpu_count = system_cpu_count();
-}
-    
 int main(int argc, char **argv)
 {
 	time_t interval = 3;
-	bool recursive = true;
 	
 	if (argc < 2) usage();
 
@@ -50,9 +25,9 @@ int main(int argc, char **argv)
 	if (!mon) 
 		mon->error("monitor_new()");
 
-	mon->init(mon->self, recursive);
-
-	set_arguments(mon, cmd_string);
+	if (!mon->init(mon->self, cmd_string)) {
+		usage();	
+	}
 
 	print_info(mon->directories[0]);
 

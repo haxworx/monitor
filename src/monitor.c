@@ -1,15 +1,12 @@
 #include "monitor.h"
 #include "network.h"
+#include "system.h"
 #include <sys/wait.h>
 #include <ctype.h>
 
 file_t *list_prev = NULL, *list_now = NULL;
 bool first_run = false;
-bool _was_initialized = false;
-bool _is_recursive = true;
 bool quit = false;
-
-
 
 char *_get_state_file_name(const char *path);
 file_t *file_list_state_get(const char *path);
@@ -331,12 +328,7 @@ scan_recursive(const char *path)
 
 	i = 0;
 
-	if (!_is_recursive) return list;
-	
-	/* 
-	 * We could monitor EVERY file recursively but
-	 * that is probably not a good idea!
-	*/
+	/* recursive scan */
 
 	while (directories[i] != NULL) {
 		file_t *next = NULL;
@@ -471,7 +463,9 @@ _monitor_compare_lists(void *self, file_t *one, file_t *two)
 int 
 monitor_watch(void *self, int poll)
 {
-	if (!_was_initialized) return 0;
+	monitor_t *mon = self;
+
+	if (!mon->initialized) return 0;
 
 	list_now = monitor_files_get(self, list_now);
 	list_prev = _monitor_compare_lists(self, list_prev, list_now);  
@@ -512,21 +506,47 @@ void exit_safe(int sig)
         quit = true;
 }
 
+int set_arguments(monitor_t *mon, char *cmd_string)
+{
+        char buf[PATH_MAX];
+        char *user_start = cmd_string;
+        char *user_end = strchr(user_start, '@');
+        if (!user_end) return 0;
+        *user_end = '\0';
+        mon->username = strdup(user_start);
+
+        char *host_start = user_end + 1;
+        if (!host_start) return 0;
+        char *host_end = strchr(host_start, ':');
+        if (!host_end) return 0;
+        *host_end = '\0';
+        mon->hostname = strdup(host_start);
+        char *directory = host_end + 1;
+        realpath(directory, buf);
+
+        mon->watch_add(mon->self, buf);
+        mon->cpu_count = system_cpu_count();
+
+	return 1;
+}
+
+
 int
-monitor_init(void *self, bool recursive)
+monitor_init(void *self, char *cmd_string)
 {
 	monitor_t *mon = self;
-	if (!recursive) 
-		_is_recursive = false;
 
+	if (!set_arguments(mon, cmd_string)) {
+		return 0;
+	}
+	
 	mon->directories[mon->_d_idx] = NULL;
 	mon->directories[DIRS_MAX - 1] = NULL;
 
-
-        signal(SIGINT, exit_safe);
-        signal(SIGTERM, exit_safe);
+	signal(SIGINT, exit_safe);
+	signal(SIGTERM, exit_safe);
 	
-	_was_initialized = true;
+	mon->initialized = true;
 
 	return 1;
 }
