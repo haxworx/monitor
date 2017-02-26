@@ -5,7 +5,7 @@
 # include <sys/sysctl.h>
 #endif
 
-#if defined(__OpenBSD__)
+#if defined(__OpenBSD__) || defined(__NetBSD__)
 # include <sys/param.h>
 # include <sys/sysctl.h>
 #endif
@@ -22,13 +22,13 @@ system_cpu_count(void)
 		cores = atoi(cpu_count);
 		return cores;
 	}
-#if defined(__FreeBSD__) || defined(__DragonFly_) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly_) || defined(__OpenBSD__) || defined(__NetBSD__)
 	size_t len;
 	int mib[2] = { CTL_HW, HW_NCPU };
 
 	len = sizeof(cores);
-	if (sysctl(mib, 2, &cores, &len, NULL, 0) == -1) return generic;
-	return cores;
+	if (sysctl(mib, 2, &cores, &len, NULL, 0) != -1) 
+		return cores;
 #elif defined(__linux__)
 	char buf[4096];
 	FILE *f = fopen("/proc/stat", "r");
@@ -45,8 +45,8 @@ system_cpu_count(void)
 	}
 	fclose(f);
 
-	return cores || generic;
-#else
+	if (cores)
+		return cores;
+#endif  // FALL THROUGH
 	return generic;
-#endif
 }
