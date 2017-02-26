@@ -35,6 +35,9 @@ int main(int argc, char **argv)
  	// mon->callback_set(mon->self, MONITOR_DEL, &do_del);
 	// mon->callback_set(mon->self, MONITOR_MOD, &do_mod);
 
+	/* Add directory to monitor */
+	// mon->watch_add(mon->self, directory)
+	
 	print_info(mon->directories[0]);
 
 	mon->authenticate(mon->self);
