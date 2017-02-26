@@ -4,9 +4,10 @@
 #include <sys/wait.h>
 #include <ctype.h>
 
-file_t *list_prev = NULL, *list_now = NULL;
 bool first_run = false;
 bool quit = false;
+
+file_t *list_prev = NULL, *list_now = NULL;
 
 char *_get_state_file_name(const char *path);
 file_t *file_list_state_get(const char *path);
@@ -58,11 +59,6 @@ int monitor_mainloop(void *self, int interval)
 {
 	monitor_t *mon = self;
 	if (mon->_d_idx == 0) exit(1 << 0);
-	/*
-	if (! monitor_add_callback || ! monitor_del_callback
-		|| !monitor_mod_callback)
-		error("callbacks not initialised!");
-	*/
 
 	list_prev = file_list_state_get(mon->state_file);
 	if (!list_prev) {
@@ -70,6 +66,9 @@ int monitor_mainloop(void *self, int interval)
 		list_prev = monitor_files_get(self, list_prev);	
 	}
 
+	// this can run and monitor in semi-realtime
+	// if interval is > 0 then program will scan
+	// for changes every interval seconds...
         while (monitor_watch(self, interval) && !quit);
 
 	return 1;
@@ -351,6 +350,7 @@ scan_recursive(const char *path)
 	return list;
 }
 
+/* It's perfectly okay to monitor more than 1 directory */
 file_t *
 monitor_files_get(monitor_t *mon, file_t *list)
 {
@@ -369,7 +369,7 @@ _get_state_file_name(const char *path)
 	char buf[PATH_MAX];
 	char absolute[PATH_MAX];
 	realpath(path, absolute);
-#if defined(__linux__) || defined(__OpenBSD__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__NetBSD__)
 	const char *home = getenv("HOME");
 #else
 	const char *home = getenv("HOMEPATH");
@@ -391,17 +391,6 @@ _get_state_file_name(const char *path)
 	snprintf(buf, sizeof(buf), "%s/%s", buf, hashname);
 	return strdup(buf);
 }
-
-void _chomp(char *str)
-{
-	while (*str) {
-		if (*str == '\n') {
-			*str = '\0';
-			return;
-		}
-		str++;
-	}
-}	
 
 file_t *
 file_list_state_get(const char *path)
@@ -480,16 +469,19 @@ monitor_watch(void *self, int poll)
 
 	list_now = monitor_files_get(self, list_now);
 	list_prev = _monitor_compare_lists(self, list_prev, list_now);  
-        
+       
+        if (poll) {
+		sleep(poll); 
+		return 1;
+	} 
+
 	quit = true;
 	
 	return 0;
-
-	sleep(poll);
-
-	return 1;
 }
-	
+
+/* It's acceptable and fine to monitor > 1 directory */
+/* if you want to anyway... */
 int
 monitor_watch_add(void *self, const char *path)
 {

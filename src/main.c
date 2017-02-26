@@ -16,7 +16,7 @@ void print_info(char *directory)
 
 int main(int argc, char **argv)
 {
-	time_t interval = 3;
+	time_t interval = 0;
 	
 	if (argc < 2) usage();
 
@@ -41,6 +41,7 @@ int main(int argc, char **argv)
 	/* Get here we've authenticated */
 
 	/* CTRL+C or SIGTERM to exit gracefully */
+	/* if interval is 0 run once only */
 	mon->mainloop(mon->self, interval);
 
 	free(mon);
