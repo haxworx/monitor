@@ -238,7 +238,6 @@ int remote_file_add(void *self, char *file)
         return true;
 }
 
-
 int 
 Connect(const char *hostname, int port)
 {
@@ -266,7 +265,6 @@ Connect(const char *hostname, int port)
 
 	return 0;
 }
-
 
 BIO *Connect_SSL(char *hostname, int port)
 {
