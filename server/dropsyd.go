@@ -17,7 +17,7 @@ func ProcessPost(request *http.Request, dir string, file string) {
 
 	bytes, err := ioutil.ReadAll(buf);
 	if err != nil {
-		return;	
+		return;
 	}
 
 	var path = dir + "/" + file;
@@ -66,20 +66,26 @@ func CredentialsSet(response http.ResponseWriter, request *http.Request) {
 	}
 
 	response.WriteHeader(http.StatusOK);
-	
+
 	var path = "config/config.txt"
 	output := fmt.Sprintf("username:%s\npassword:%s\n", username, password);
 	f, _ := os.Create(path)
 	f.Write([]byte(output))
 	f.Close();
 
-	var str = fmt.Sprintf("<p>username: %s and passsord %s</p>\n", username, password);
-	response.Write([]byte(str));
+	filename := "html/success.html"
+	body, err := ioutil.ReadFile(filename)
+	if err != nil {
+		response.WriteHeader(http.StatusBadRequest);
+		response.Write([]byte("<p>missing internal files!</p>"))
+		return;
+	}
 
-
+	response.WriteHeader(http.StatusOK);
+	response.Write(body);
 }
 
-func GetCredentials() (string, string) {
+func CredentialsGet() (string, string) {
 	var path = "config/config.txt"
 
 	f, err := os.Open(path)
@@ -88,6 +94,8 @@ func GetCredentials() (string, string) {
 	}
 
 	bytes, _ := ioutil.ReadAll(f)
+	f.Close()
+
 	data := string(bytes)
 
 	usertag := "username:"
@@ -95,7 +103,7 @@ func GetCredentials() (string, string) {
 	idx := strings.Index(data, usertag) 
 	start_user := data[idx + len(usertag):len(data)];
 	end_user  := strings.Index(start_user, "\n");
-	
+
 	passtag := "password:"
 
 	idx = strings.Index(data, passtag)
@@ -105,7 +113,6 @@ func GetCredentials() (string, string) {
 	username := start_user[0:end_user];
 	password := start_pass[0:end_pass];
 
-	f.Close()
 
 	return username, password
 }
@@ -124,11 +131,11 @@ func GenericRequest(response http.ResponseWriter, request *http.Request) {
 
 func PostRequest(response http.ResponseWriter, request *http.Request) {
 	if request.Method != "POST" {
-		http.Error(response, "POST ONLY", http.StatusBadRequest);
+		http.Error(response, "unsupported method!", http.StatusBadRequest);
 		return;
 	}
 
-	username, password := GetCredentials()
+	username, password := CredentialsGet()
 
 	var user = request.Header.Get("username");
 	var pass = request.Header.Get("password");
@@ -170,7 +177,7 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 	case "AUTH":
 		AuthResponse(response, 0)
 	default:
-		http.Error(response, "Not today", http.StatusBadRequest)
+		http.Error(response, "unknown request", http.StatusBadRequest)
 	};
 }
 
@@ -183,6 +190,6 @@ func main() {
 	fmt.Printf("Running: dropsyd daemon\n");
 	err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil);
 	if err != nil {
-		fmt.Printf("Check your public/private keys\n");
+		fmt.Printf("missing public/private keys???\n");
 	}
 }
