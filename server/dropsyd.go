@@ -104,5 +104,8 @@ func main() {
 	fmt.Printf("(c) Copyright 2016. Al Poole <nestar@gmail.com>.\n");
 	fmt.Printf("See: http://haxlab.org\n");
 	fmt.Printf("Running: dropsyd daemon\n");
-	http.ListenAndServe(":12345", nil);
+	err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil);
+	if err != nil {
+		fmt.Printf("Check your public/private keys\n");
+	}
 }
