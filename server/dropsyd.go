@@ -199,7 +199,12 @@ func main() {
 		}
 	}()
 
+	fmt.Printf("Configure this instance at: http://localhost\n");
 	http.HandleFunc("/", GenericRequest)
 	http.HandleFunc("/config", CredentialsSet);
-	http.ListenAndServe(":80", nil);
+	err := http.ListenAndServe(":80", nil);
+	if err != nil {
+		fmt.Printf("unable to bind to port 80 (permissions???)\n");
+		os.Exit(1);
+	}
 }
