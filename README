@@ -25,6 +25,8 @@
 
    Major Changes:
 
+   *  Implemented and enabled SSL support in client/server (now default).
+   
    *  Dumped Node.js server in favour of Golang version. 
 
    THANKS
