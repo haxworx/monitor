@@ -63,6 +63,8 @@ struct monitor_t {
 	int _d_idx, _w_pos;
 	char *state_file;
 	bool initialized;
+	file_t *list_now;
+	file_t *list_prev;
 	fn_init init;
 	fn_watch_add watch_add;	
 	fn_watch watch;

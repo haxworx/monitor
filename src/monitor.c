@@ -7,8 +7,6 @@
 bool first_run = false;
 bool quit = false;
 
-file_t *list_prev = NULL, *list_now = NULL;
-
 char *_get_state_file_name(const char *path);
 file_t *file_list_state_get(const char *path);
 
@@ -60,10 +58,10 @@ int monitor_mainloop(void *self, int interval)
 	monitor_t *mon = self;
 	if (mon->_d_idx == 0) exit(1 << 0);
 
-	list_prev = file_list_state_get(mon->state_file);
-	if (!list_prev) {
+	mon->list_prev = file_list_state_get(mon->state_file);
+	if (!mon->list_prev) {
 		first_run = true; // initialise!!!
-		list_prev = monitor_files_get(self, list_prev);	
+		mon->list_prev = monitor_files_get(self, mon->list_prev);	
 	}
 
 	// this can run and monitor in semi-realtime
@@ -467,8 +465,8 @@ monitor_watch(void *self, int poll)
 
 	if (!mon->initialized) return 0;
 
-	list_now = monitor_files_get(self, list_now);
-	list_prev = _monitor_compare_lists(self, list_prev, list_now);  
+	mon->list_now = monitor_files_get(self, mon->list_now);
+	mon->list_prev = _monitor_compare_lists(self, mon->list_prev, mon->list_now);  
        
         if (poll) {
 		sleep(poll); 
@@ -548,7 +546,9 @@ monitor_init(void *self, char *cmd_string)
 
 	signal(SIGINT, exit_safe);
 	signal(SIGTERM, exit_safe);
-	
+
+	mon->list_prev = NULL;
+	mon->list_now = NULL;	
 	mon->initialized = true;
 
 	return 1;
