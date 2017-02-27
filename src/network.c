@@ -42,9 +42,15 @@ _directory_from_path(char *path)
 
 	if (!path) return NULL;
 	
-	for (i = 0; cwd[i] == path[i]; i++) {
+	// take /home/netstar/files
+	// becomes files/	
+	for (i = 0; cwd[i] == path[i]; i++);
 
-	}
+	// don't send any path beginning /
+	// /etc becomes etc	
+	while (path[i] == '/')
+		i++;
+
 	char *path_begin = &path[i];
 	char *t = strrchr(path_begin, '/');
 	if (t) {
