@@ -7,7 +7,7 @@
 bool first_run = false;
 bool quit = false;
 
-char *_get_state_file_name(const char *path);
+char *_get_state_file_name(const char *path, const char *hostname);
 file_t *file_list_state_get(const char *path);
 
 int error(char *str)
@@ -362,10 +362,10 @@ monitor_files_get(monitor_t *mon, file_t *list)
 }
 
 char *
-_get_state_file_name(const char *path)
+_get_state_file_name(const char *path, const char *hostname)
 {
 	char buf[PATH_MAX];
-	char absolute[PATH_MAX];
+	char absolute[PATH_MAX * 2 + 1];
 	realpath(path, absolute);
 #if defined(__linux__) || defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__NetBSD__)
 	const char *home = getenv("HOME");
@@ -379,8 +379,9 @@ _get_state_file_name(const char *path)
 	if (stat(buf, &st) < 0)
 		mkdir(buf, 0755);
 
-	char hashname[strlen(absolute) * 2 + 1];
-       
+	char hashname[(strlen(hostname) * 2) + (strlen(absolute) * 2) + 1];
+      
+        snprintf(absolute, sizeof(absolute), "%s:%s", absolute, hostname);	
 	memset(hashname, 0, strlen(absolute) * 2 + 1);	
 	for (int i = 0; i < strlen(absolute); i++)
 		snprintf(hashname, sizeof(hashname), "%s%2x", hashname, absolute[i]);
@@ -496,7 +497,7 @@ monitor_watch_add(void *self, const char *path)
 	
 	mon->directories[mon->_d_idx++] = strdup(path);
 
-	mon->state_file = _get_state_file_name(path);
+	mon->state_file = _get_state_file_name(path, mon->hostname);
 
 	return 1;
 }
