@@ -42,11 +42,9 @@ _directory_from_path(char *path)
 
 	if (!path) return NULL;
 	
-	// take /home/netstar/files
-	// becomes files/	
+	// /home/netstar/files becomes files/	
 	for (i = 0; cwd[i] == path[i]; i++);
 
-	// don't send any path beginning /
 	// /etc becomes etc	
 	while (path[i] == '/')
 		i++;
