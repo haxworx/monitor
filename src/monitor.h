@@ -3,6 +3,7 @@
 #define PROGRAM_NAME "dropsy"
 #define __MONITOR_H__
 #define _DEFAULT_SOURCE
+#include "network.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -56,6 +57,7 @@ struct monitor_t {
 	monitor_t *self;
 	char *hostname;
 	int sock;
+	BIO *bio;
 	char *username;
 	char *password;
 	char *directories[DIRS_MAX];

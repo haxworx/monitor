@@ -386,7 +386,7 @@ _get_state_file_name(const char *path, const char *hostname)
 	for (int i = 0; i < strlen(absolute); i++)
 		snprintf(hashname, sizeof(hashname), "%s%2x", hashname, absolute[i]);
 
-	// return path for unique state file path (unique to location)
+	// return path for unique state file path (unique to location and destination)
 	snprintf(buf, sizeof(buf), "%s/%s", buf, hashname);
 	return strdup(buf);
 }

@@ -1,9 +1,24 @@
 #include "network.h"
 #include "monitor.h"
+
+#include <stdarg.h>
 #include <unistd.h>
 
 #define REMOTE_URI "/any"
 #define BUF_MAX 4096
+
+void Error(char *fmt, ...)
+{
+	char mesg[BUF_MAX];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(mesg, sizeof(mesg), fmt, ap);
+	fprintf(stderr, "Error: %s\n", mesg);
+	va_end(ap);
+
+	exit(1);
+}
 
 char *
 _file_from_path(char *path)
@@ -53,8 +68,8 @@ authenticate(void *self)
 
 	mon->password = strdup(guess);
 
-	mon->sock = Connect(mon->hostname, DEFAULT_PORT);
-	if (!mon->sock)
+	mon->bio = Connect_SSL(mon->hostname, DEFAULT_PORT);
+	if (!mon->bio)
 		mon->error("Could not connect!");
 
 	char post[BUF_MAX];
@@ -69,12 +84,12 @@ authenticate(void *self)
 	snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
 			mon->username, mon->password);
 
-	write(mon->sock, post, strlen(post));
+	Write(mon, post, strlen(post));
 
 	char buf[BUF_MAX] = { 0 };
 	ssize_t len = 0;
 
-	len = read(mon->sock, buf, sizeof(buf));
+	len = Read(mon, buf, sizeof(buf));
 	buf[len] = '\0';
 
 	int status = 1000;
@@ -96,7 +111,7 @@ authenticate(void *self)
 	if (status != 0)
 		mon->error("Invalid username or password");
 
-	close(mon->sock);
+	Close(mon);
 
 	return 0;
 }
@@ -108,8 +123,8 @@ remote_file_del(void *self, char *file)
         char path[PATH_MAX] = { 0 };
         snprintf(path, sizeof(path), "%s", file);
 
-        mon->sock = Connect(mon->hostname, DEFAULT_PORT);
-        if (!mon->sock) {
+        mon->bio = Connect_SSL(mon->hostname, DEFAULT_PORT);
+        if (!mon->bio) {
                 fprintf(stderr, "Could not connect()\n");
                 return false;
         }
@@ -134,9 +149,9 @@ remote_file_del(void *self, char *file)
         snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
                  content_length, mon->username, mon->password, dir_from_path,
                  file_from_path);
-        write(mon->sock, post, strlen(post));
+        Write(mon, post, strlen(post));
 
-        close(mon->sock);
+        Close(mon);
 
         return true;
 }
@@ -149,8 +164,8 @@ int remote_file_add(void *self, char *file)
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
 
-        mon->sock = Connect(mon->hostname, DEFAULT_PORT);
-        if (!mon->sock) {
+        mon->bio = Connect_SSL(mon->hostname, DEFAULT_PORT);
+        if (!mon->bio) {
                 fprintf(stderr, "Could not connect()\n");
                 return false;
         }
@@ -190,7 +205,7 @@ int remote_file_add(void *self, char *file)
         snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
                  content_length, mon->username, mon->password, file_from_path,
                  dir_from_path);
-        write(mon->sock, post, strlen(post));
+        Write(mon, post, strlen(post));
         int total = 0;
 
         int size = content_length;
@@ -199,7 +214,7 @@ int remote_file_add(void *self, char *file)
                         int count = fread(buffer, 1, CHUNK, f);
                         //ssize_t bytes = send(sock, buffer, count, 0);
                         // this is exactly the same with 0 flag
-                        ssize_t bytes = write(mon->sock, buffer, count);
+                        ssize_t bytes = Write(mon, buffer, count);
                         if (bytes < count) {
                                 return false;
                         }
@@ -253,3 +268,60 @@ Connect(const char *hostname, int port)
 }
 
 
+BIO *Connect_SSL(char *hostname, int port)
+{
+        BIO *bio = NULL;
+        char bio_addr[BUF_MAX] = { 0 };
+
+        snprintf(bio_addr, sizeof(bio_addr), "%s:%d", hostname, port);
+
+        SSL_library_init();
+
+        SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+        SSL *ssl = NULL;
+
+        bio = BIO_new_ssl_connect(ctx);
+        if (bio == NULL) {
+                Error("BIO_new_ssl_connect");
+        }
+
+        BIO_get_ssl(bio, &ssl);
+        SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+        BIO_set_conn_hostname(bio, bio_addr);
+
+        if (BIO_do_connect(bio) <= 0) {
+                Error("SSL Unable to connect");
+        }
+
+        return bio;
+}
+
+ssize_t Read(void *self, char *buf, int len)
+{
+	monitor_t *mon = self;
+	if (mon->bio)
+		return BIO_read(mon->bio, buf, len);
+
+	return read(mon->sock, buf, len);
+}
+
+ssize_t Write(void *self, char *buf, int len)
+{
+	monitor_t *mon = self;
+	if (mon->bio)
+		return BIO_write(mon->bio, buf, len);
+
+	return write(mon->sock, buf, len);
+}
+
+int Close(void *self)
+{
+	monitor_t *mon = self;
+	if (mon->bio) {
+		BIO_free_all(mon->bio);
+		mon->bio = NULL;
+		return 0;
+	}
+	
+	return close(mon->sock);
+}

@@ -5,10 +5,19 @@
 #include <netdb.h>
 #include <netinet/in.h>
 
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 #define DEFAULT_PORT 12345
 
 char *strdup(const char *s);
+
 int Connect(const char *hostname, int port);
+BIO* Connect_SSL(char *hostname, int port);
+ssize_t Read(void *self, char *buf, int len);
+ssize_t Write(void *self, char *buf, int len);
+int Close(void *self);
 
 int authenticate(void *self);
 int remote_file_add(void *self, char *file);
