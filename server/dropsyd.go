@@ -65,8 +65,6 @@ func CredentialsSet(response http.ResponseWriter, request *http.Request) {
 		return;
 	}
 
-	response.WriteHeader(http.StatusOK);
-
 	var path = "config/config.txt"
 	output := fmt.Sprintf("username:%s\npassword:%s\n", username, password);
 	f, _ := os.Create(path)
@@ -182,14 +180,20 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 }
 
 func main() {
- 	http.HandleFunc("/", GenericRequest)
-	http.HandleFunc("/any", PostRequest);
-	http.HandleFunc("/config", CredentialsSet);
 	fmt.Printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n");
 	fmt.Printf("See: http://haxlab.org\n");
 	fmt.Printf("Running: dropsyd daemon\n");
-	err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil);
-	if err != nil {
-		fmt.Printf("missing public/private keys???\n");
-	}
+
+	go func() {
+		http.HandleFunc("/any", PostRequest);
+		err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil);
+		if err != nil {
+			fmt.Printf("missing public/private keys???\n");
+			os.Exit(1);
+		}
+	}()
+ 	
+	http.HandleFunc("/", GenericRequest)
+	http.HandleFunc("/config", CredentialsSet);
+	http.ListenAndServe(":80", nil);
 }

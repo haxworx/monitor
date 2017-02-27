@@ -7,7 +7,7 @@
    USAGE
  
    To configure username and password for the server instance,
-   point your web browser to https://hostname:12345
+   point your web browser to http://hostname.of.server
  
    On the server run dropsyd.go with Go-lang compiler/interpreter and
    in the directory you wish filesystem mirroring to occur.
