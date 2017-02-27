@@ -8,6 +8,7 @@ import(
 	"net/http"
 	"io/ioutil"
 	"os"
+	"sync"
 );
 
 func ProcessPost(request *http.Request, dir string, file string) {
@@ -67,9 +68,14 @@ func CredentialsSet(response http.ResponseWriter, request *http.Request) {
 
 	var path = "config/config.txt"
 	output := fmt.Sprintf("username:%s\npassword:%s\n", username, password);
+
+	var mutex = &sync.Mutex{}
+
+	mutex.Lock()
 	f, _ := os.Create(path)
 	f.Write([]byte(output))
 	f.Close();
+	mutex.Unlock()
 
 	filename := "html/success.html"
 	body, err := ioutil.ReadFile(filename)
@@ -192,7 +198,7 @@ func main() {
 			os.Exit(1);
 		}
 	}()
- 	
+
 	http.HandleFunc("/", GenericRequest)
 	http.HandleFunc("/config", CredentialsSet);
 	http.ListenAndServe(":80", nil);
