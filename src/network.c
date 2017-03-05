@@ -164,7 +164,7 @@ int remote_file_add(void *self, char *file)
 {
 	monitor_t *mon = self;
         char path[PATH_MAX] = { 0 };
-        snprintf(path, sizeof(path), file);
+        snprintf(path, sizeof(path), "%s", file);
         char dirname[PATH_MAX] = { 0 };
         snprintf(dirname, sizeof(dirname), "%s", mon->directories[0]);
 
