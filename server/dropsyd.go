@@ -29,7 +29,7 @@ func SaveToDisk(request *http.Request, user string, dir string, file string) {
 	f.Close()
 }
 
-func DelFromFromDisk(user string, dir string, file string) {
+func DelFromDisk(user string, dir string, file string) {
 	var path = user + "/" + dir + "/" + file
 	if dir == "" || file == "" { return }
 	fmt.Printf("remove %s\n", path)
@@ -176,7 +176,7 @@ func ClientRequest(response http.ResponseWriter, request *http.Request) {
 	case "ADD":
 		SaveToDisk(request, username, directory, file)
 	case "DEL":
-		DelFromFromDisk(username, directory, file);
+		DelFromDisk(username, directory, file);
 	case "AUTH":
 		StatusToClient(response, 0)
 	default:
