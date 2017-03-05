@@ -11,17 +11,18 @@ import(
 	"sync"
 )
 
-func ProcessPost(request *http.Request, dir string, file string) {
+func SaveFile(request *http.Request, user string, dir string, file string) {
 	var buf = request.Body;
 
-        os.MkdirAll(dir, 0777)
+	var path = user + "/" + dir
+        os.MkdirAll(path, 0777)
 
 	bytes, err := ioutil.ReadAll(buf)
 	if err != nil {
 		return;
 	}
 
-	var path = dir + "/" + file;
+	path = user + "/" + dir + "/" + file;
 
 	fmt.Printf("create %s\n", path)
 	f, err := os.Create(path)
@@ -44,7 +45,7 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-func AuthResponse(response http.ResponseWriter, value int) {
+func CheckAuth(response http.ResponseWriter, value int) {
 	response.WriteHeader(http.StatusOK)
 	var format = fmt.Sprintf("status: %d\r\n\r\n", value)
 	response.Write([]byte(format))
@@ -145,7 +146,7 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 	username, password := CredentialsGet();
 
 	if user != username || pass != password {
-		AuthResponse(response, 1)
+		CheckAuth(response, 1)
 		return;
 	}
 
@@ -154,9 +155,9 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 		if directory == "" || file == "" {
 			return;
 		}
-		ProcessPost(request, directory, file)
+		SaveFile(request, username, directory, file)
 	case "DEL":
-		var path = directory + "/" + file
+		var path = username + "/" + directory + "/" + file
 		fmt.Printf("remove %s\n", path)
 
 		fi, err := os.Stat(path)
@@ -176,9 +177,29 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 			}
 		}
 	case "AUTH":
-		AuthResponse(response, 0)
+		CheckAuth(response, 0)
 	default:
 		http.Error(response, "unknown request", http.StatusBadRequest)
+	}
+}
+
+func SettingsServer() {
+	fmt.Printf("Configure this instance at: http://localhost\n")
+	http.HandleFunc("/", GenericRequest)
+	http.HandleFunc("/config", CredentialsSet)
+	err := http.ListenAndServe(":80", nil)
+	if err != nil {
+		fmt.Printf("unable to bind to port 80\n")
+		os.Exit(0)
+	}
+}
+
+func MainServer() {
+	http.HandleFunc("/any", PostRequest)
+	err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil)
+	if err != nil {
+		fmt.Printf("missing public/private keys???\n")
+		os.Exit(0)
 	}
 }
 
@@ -188,20 +209,8 @@ func main() {
 	fmt.Printf("Running: dropsyd daemon\n")
 
 	go func() {
-		http.HandleFunc("/any", PostRequest)
-		err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil)
-		if err != nil {
-			fmt.Printf("missing public/private keys???\n")
-			os.Exit(0)
-		}
+		MainServer();
 	}()
 
-	fmt.Printf("Configure this instance at: http://localhost\n")
-	http.HandleFunc("/", GenericRequest)
-	http.HandleFunc("/config", CredentialsSet)
-	err := http.ListenAndServe(":80", nil)
-	if err != nil {
-		fmt.Printf("unable to bind to port 80\n")
-		os.Exit(0)
-	}
+	SettingsServer();
 }
