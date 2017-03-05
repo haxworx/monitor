@@ -1,4 +1,3 @@
-package main;
 
 // as always a work in progres...
 
@@ -11,7 +10,7 @@ import(
 	"sync"
 )
 
-func SaveFile(request *http.Request, user string, dir string, file string) {
+func SaveToDisk(request *http.Request, user string, dir string, file string) {
 	var buf = request.Body;
 	if dir == "" || file == "" { return }
 	var path = user + "/" + dir
@@ -30,7 +29,7 @@ func SaveFile(request *http.Request, user string, dir string, file string) {
 	f.Close()
 }
 
-func RemoveFile(user string, dir string, file string) {
+func DelFromFromDisk(user string, dir string, file string) {
 	var path = user + "/" + dir + "/" + file
 	if dir == "" || file == "" { return }
 	fmt.Printf("remove %s\n", path)
@@ -68,13 +67,13 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-func CheckAuth(response http.ResponseWriter, value int) {
+func StatusToClient(response http.ResponseWriter, value int) {
 	response.WriteHeader(http.StatusOK)
 	var format = fmt.Sprintf("status: %d\r\n\r\n", value)
 	response.Write([]byte(format))
 }
 
-func CredentialsSet(response http.ResponseWriter, request *http.Request) {
+func ClientSetConfig(response http.ResponseWriter, request *http.Request) {
 	if request.Method != "POST" {
 		http.Error(response, "not supported!", http.StatusBadRequest)
 	}
@@ -141,7 +140,7 @@ func CredentialsGet() (string, string) {
 	return username, password
 }
 
-func GenericRequest(response http.ResponseWriter, request *http.Request) {
+func SettingsRequest(response http.ResponseWriter, request *http.Request) {
 	filename := "html/index.html"
 
 	body, err := ioutil.ReadFile(filename)
@@ -153,7 +152,7 @@ func GenericRequest(response http.ResponseWriter, request *http.Request) {
 	response.Write(body)
 }
 
-func PostRequest(response http.ResponseWriter, request *http.Request) {
+func ClientRequest(response http.ResponseWriter, request *http.Request) {
 	if request.Method != "POST" {
 		http.Error(response, "unsupported method!", http.StatusBadRequest)
 		return;
@@ -169,17 +168,17 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 	username, password := CredentialsGet();
 
 	if user != username || pass != password {
-		CheckAuth(response, 1)
+		StatusToClient(response, 1)
 		return;
 	}
 
 	switch action {
 	case "ADD":
-		SaveFile(request, username, directory, file)
+		SaveToDisk(request, username, directory, file)
 	case "DEL":
-		RemoveFile(username, directory, file);
+		DelFromFromDisk(username, directory, file);
 	case "AUTH":
-		CheckAuth(response, 0)
+		StatusToClient(response, 0)
 	default:
 		http.Error(response, "unknown request", http.StatusBadRequest)
 	}
@@ -187,8 +186,8 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 
 func SettingsServer() {
 	fmt.Printf("Configure this instance at: http://localhost\n")
-	http.HandleFunc("/", GenericRequest)
-	http.HandleFunc("/config", CredentialsSet)
+	http.HandleFunc("/", SettingsRequest)
+	http.HandleFunc("/config", ClientSetConfig)
 	err := http.ListenAndServe(":80", nil)
 	if err != nil {
 		fmt.Printf("unable to bind to port 80\n")
@@ -197,7 +196,7 @@ func SettingsServer() {
 }
 
 func MainServer() {
-	http.HandleFunc("/any", PostRequest)
+	http.HandleFunc("/any", ClientRequest)
 	err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil)
 	if err != nil {
 		fmt.Printf("missing public/private keys???\n")
