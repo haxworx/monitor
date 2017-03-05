@@ -43,12 +43,13 @@ func RemoveFile(user string, dir string, file string) {
 	mode := fi.Mode()
 	if !mode.IsDir() {
 		os.Remove(path)
-		for DirIsEmpty(dir) {
-			fmt.Printf("rmdir %s\n", dir)
-			os.Remove(dir)
-			end := strings.LastIndex(dir, "/")
+		path := user + "/" + dir
+		for DirIsEmpty(path) {
+			fmt.Printf("rmdir %s\n", path)
+			os.Remove(path)
+			end := strings.LastIndex(path, "/")
 			if end < 0 { break }
-			dir = dir[0:end];
+			path = path[0:end];
 		}
 	}
 }
