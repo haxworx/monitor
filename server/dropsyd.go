@@ -30,8 +30,8 @@ func SaveToDisk(request *http.Request, user string, dir string, file string) {
 }
 
 func DelFromDisk(user string, dir string, file string) {
-	var path = user + "/" + dir + "/" + file
 	if dir == "" || file == "" { return }
+	var path = user + "/" + dir + "/" + file
 	fmt.Printf("remove %s\n", path)
 
 	fi, err := os.Stat(path)
