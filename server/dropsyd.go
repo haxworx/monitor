@@ -13,7 +13,7 @@ import(
 
 func SaveFile(request *http.Request, user string, dir string, file string) {
 	var buf = request.Body;
-
+	if dir == "" || file == "" { return }
 	var path = user + "/" + dir
         os.MkdirAll(path, 0777)
 
@@ -30,6 +30,28 @@ func SaveFile(request *http.Request, user string, dir string, file string) {
 	f.Close()
 }
 
+func RemoveFile(user string, dir string, file string) {
+	var path = user + "/" + dir + "/" + file
+	if dir == "" || file == "" { return }
+	fmt.Printf("remove %s\n", path)
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+
+	mode := fi.Mode()
+	if !mode.IsDir() {
+		os.Remove(path)
+		for DirIsEmpty(dir) {
+			fmt.Printf("rmdir %s\n", dir)
+			os.Remove(dir)
+			end := strings.LastIndex(dir, "/")
+			if end < 0 { break }
+			dir = dir[0:end];
+		}
+	}
+}
 
 func DirIsEmpty(directory string) bool {
 	count := 0
@@ -152,30 +174,9 @@ func PostRequest(response http.ResponseWriter, request *http.Request) {
 
 	switch action {
 	case "ADD":
-		if directory == "" || file == "" {
-			return;
-		}
 		SaveFile(request, username, directory, file)
 	case "DEL":
-		var path = username + "/" + directory + "/" + file
-		fmt.Printf("remove %s\n", path)
-
-		fi, err := os.Stat(path)
-		if err != nil {
-			return
-		}
-
-		mode := fi.Mode()
-		if !mode.IsDir() {
-			os.Remove(path)
-			for DirIsEmpty(directory) {
-				fmt.Printf("rmdir %s\n", directory)
-				os.Remove(directory)
-				end := strings.LastIndex(directory, "/")
-				if end < 0 { break }
-				directory = directory[0:end];
-			}
-		}
+		RemoveFile(username, directory, file);
 	case "AUTH":
 		CheckAuth(response, 0)
 	default:
@@ -209,8 +210,8 @@ func main() {
 	fmt.Printf("Running: dropsyd daemon\n")
 
 	go func() {
-		MainServer();
+		SettingsServer();
 	}()
 
-	SettingsServer();
+	MainServer();
 }
