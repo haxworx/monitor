@@ -1,4 +1,4 @@
-
+package main
 // as always a work in progres...
 
 import(
