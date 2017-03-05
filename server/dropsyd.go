@@ -210,9 +210,7 @@ func main() {
 	fmt.Printf("See: http://haxlab.org\n")
 	fmt.Printf("Running: dropsyd daemon\n")
 
-	go func() {
-		SettingsServer();
-	}()
+	go SettingsServer();
 
 	MainServer();
 }
