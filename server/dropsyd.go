@@ -3,6 +3,7 @@ package main
 
 import(
 	"fmt"
+        "bufio"
 	"strings"
 	"net/http"
 	"io/ioutil"
@@ -10,18 +11,20 @@ import(
 	"sync"
 )
 
-func SaveToDisk(request *http.Request, user string, dir string, file string) {
-	var buf = request.Body;
+const PASSWD_FILE = "config/passwd"
+
+func SaveToDisk(req *http.Request, user string, dir string, file string) {
+	var buf = req.Body;
 	if dir == "" || file == "" { return }
 	var path = user + "/" + dir
         os.MkdirAll(path, 0777)
 
 	bytes, err := ioutil.ReadAll(buf)
 	if err != nil {
-		return;
+		return
 	}
 
-	path = user + "/" + dir + "/" + file;
+	path = user + "/" + dir + "/" + file
 
 	fmt.Printf("create %s\n", path)
 	f, err := os.Create(path)
@@ -48,7 +51,7 @@ func DelFromDisk(user string, dir string, file string) {
 			os.Remove(path)
 			end := strings.LastIndex(path, "/")
 			if end < 0 { break }
-			path = path[0:end];
+			path = path[0:end]
 		}
 	}
 }
@@ -67,30 +70,30 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-func StatusToClient(response http.ResponseWriter, value int) {
-	response.WriteHeader(http.StatusOK)
+func SendClientStatus(res http.ResponseWriter, value int) {
+	res.WriteHeader(http.StatusOK)
 	var format = fmt.Sprintf("status: %d\r\n\r\n", value)
-	response.Write([]byte(format))
+	res.Write([]byte(format))
 }
 
-func ClientSetConfig(response http.ResponseWriter, request *http.Request) {
-	if request.Method != "POST" {
-		http.Error(response, "not supported!", http.StatusBadRequest)
+func SettingsUpdate(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(res, "not supported!", http.StatusBadRequest)
 	}
 
-	request.ParseForm()
+	req.ParseForm()
 
-	username := request.FormValue("username")
-	password := request.FormValue("password")
+	username := req.FormValue("username")
+	password := req.FormValue("password")
 
 	if username == "" || password == "" {
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte("<p>Empty fields!</p>"))
-		return;
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("<p>Empty fields!</p>"))
+		return
 	}
 
-	var path = "config/config.txt"
-	output := fmt.Sprintf("username:%s\npassword:%s\n", username, password)
+	var path = PASSWD_FILE
+	output := fmt.Sprintf("%s:%s\n", username, password)
 
 	var mutex = &sync.Mutex{}
 
@@ -103,103 +106,124 @@ func ClientSetConfig(response http.ResponseWriter, request *http.Request) {
 	filename := "html/success.html"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte("<p>missing internal files!</p>"))
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte("<p>missing internal files!</p>"))
 		return;
 	}
 
-	response.WriteHeader(http.StatusOK)
-	response.Write(body)
+	res.WriteHeader(http.StatusOK)
+	res.Write(body)
 }
 
-func CredentialsGet() (string, string) {
-	var path = "config/config.txt"
-
-	f, _ := os.Open(path)
-	bytes, _ := ioutil.ReadAll(f)
-	f.Close()
-
-	data := string(bytes)
-
-	usertag := "username:"
-
-	idx := strings.Index(data, usertag) 
-	start_user := data[idx + len(usertag):len(data)];
-	end_user  := strings.Index(start_user, "\n")
-
-	passtag := "password:"
-
-	idx = strings.Index(data, passtag)
-	start_pass := data[idx + len(passtag):len(data)]
-	end_pass := strings.Index(start_pass, "\n")
-
-	username := start_user[0:end_user];
-	password := start_pass[0:end_pass];
-
-
-	return username, password
+type Credentials_t struct {
+        username string;
+        password string;
 }
 
-func SettingsRequest(response http.ResponseWriter, request *http.Request) {
+func CheckAuth(res http.ResponseWriter, username string, password string) (Credentials_t, error) {
+	var path = PASSWD_FILE
+
+        var entry Credentials_t
+
+	f, err := os.Open(path)
+        if err != nil {
+                return entry, err
+        }
+
+        defer f.Close()
+
+        r := bufio.NewReader(f) 
+
+        for {
+                bytes, err := r.ReadBytes('\n') 
+                if err != nil {
+                        return entry, err
+                }
+
+                if bytes[0] == '#' { continue }
+
+                line := string(bytes)
+
+                eou := strings.Index(line, ":")
+                tmp_user := line[0:eou]
+                if tmp_user != username {
+                        continue
+                }
+
+                eop := strings.Index(line, "\n")
+
+                tmp_pass := line[eou + 1:eop];
+
+                entry.username = tmp_user
+	        entry.password = tmp_pass
+                if tmp_pass != password {
+                        SendClientStatus(res, 1)
+                        return entry, nil
+                } else {
+                        break
+                }
+        }
+
+        SendClientStatus(res, 0)
+
+	return entry, nil
+}
+
+func SettingsIndexShow(res http.ResponseWriter, req *http.Request) {
 	filename := "html/index.html"
 
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
-		response.WriteHeader(http.StatusBadRequest)
+		res.WriteHeader(http.StatusBadRequest)
 	}
 
-	response.WriteHeader(http.StatusOK)
-	response.Write(body)
+	res.WriteHeader(http.StatusOK)
+	res.Write(body)
 }
 
-func ClientRequest(response http.ResponseWriter, request *http.Request) {
-	if request.Method != "POST" {
-		http.Error(response, "unsupported method!", http.StatusBadRequest)
-		return;
+func MainServerRequest(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(res, "unsupported method!", http.StatusBadRequest)
+		return
 	}
 
+	var user_guess = req.Header.Get("username")
+	var pass_guess = req.Header.Get("password")
+	var file = req.Header.Get("filename")
+	var action = req.Header.Get("action")
+	var directory = req.Header.Get("directory")
 
-	var user = request.Header.Get("username")
-	var pass = request.Header.Get("password")
-	var file = request.Header.Get("filename")
-	var action = request.Header.Get("action")
-	var directory = request.Header.Get("directory")
-
-	username, password := CredentialsGet();
-
-	if user != username || pass != password {
-		StatusToClient(response, 1)
-		return;
-	}
+	credits, err := CheckAuth(res, user_guess, pass_guess)
+        if err != nil {
+                return
+        }
 
 	switch action {
+        case "AUTH":
+                return
 	case "ADD":
-		SaveToDisk(request, username, directory, file)
+		SaveToDisk(req, credits.username, directory, file)
 	case "DEL":
-		DelFromDisk(username, directory, file);
-	case "AUTH":
-		StatusToClient(response, 0)
+		DelFromDisk(credits.username, directory, file)
 	default:
-		http.Error(response, "unknown request", http.StatusBadRequest)
+		http.Error(res, "unknown req", http.StatusBadRequest)
 	}
 }
 
 func SettingsServer() {
-	fmt.Printf("Configure this instance at: http://localhost\n")
-	http.HandleFunc("/", SettingsRequest)
-	http.HandleFunc("/config", ClientSetConfig)
-	err := http.ListenAndServe(":80", nil)
-	if err != nil {
-		fmt.Printf("unable to bind to port 80\n")
+	fmt.Printf("Configure this instance at: http://localhost:8080\n")
+	http.HandleFunc("/", SettingsIndexShow)
+	http.HandleFunc("/config", SettingsUpdate)
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		fmt.Printf("unable to bind to port 8080\n")
 		os.Exit(0)
 	}
 }
 
 func MainServer() {
-	http.HandleFunc("/any", ClientRequest)
-	err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil)
-	if err != nil {
-		fmt.Printf("missing public/private keys???\n")
+	http.HandleFunc("/any", MainServerRequest)
+	if err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil); err != nil {
+		fmt.Printf("FATAL: missing public/private keys???\n")
 		os.Exit(0)
 	}
 }
@@ -209,7 +233,7 @@ func main() {
 	fmt.Printf("See: http://haxlab.org\n")
 	fmt.Printf("Running: dropsyd daemon\n")
 
-	go SettingsServer();
+	go SettingsServer()
 
-	MainServer();
+	MainServer()
 }
