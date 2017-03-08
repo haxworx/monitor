@@ -8,10 +8,32 @@ import(
 	"net/http"
 	"io/ioutil"
 	"os"
-	"sync"
 )
 
+const CERT_FILE = "config/server.crt"
+const CERT_KEY_FILE = "config/server.key"
+
 const PASSWD_FILE = "config/passwd"
+
+type Credentials_t struct {
+        username string;
+        password string;
+        // OTHER STUFF???
+}
+
+func DirIsEmpty(directory string) bool {
+	count := 0
+	files, err := ioutil.ReadDir(directory)
+	if err != nil {
+		return false
+	}
+
+	count = len(files)
+	if count > 0 {
+		return false;
+	}
+	return true;
+}
 
 func SaveToDisk(req *http.Request, user string, dir string, file string) {
 	var buf = req.Body;
@@ -56,68 +78,10 @@ func DelFromDisk(user string, dir string, file string) {
 	}
 }
 
-func DirIsEmpty(directory string) bool {
-	count := 0
-	files, err := ioutil.ReadDir(directory)
-	if err != nil {
-		return false
-	}
-
-	count = len(files)
-	if count > 0 {
-		return false;
-	}
-	return true;
-}
-
 func SendClientStatus(res http.ResponseWriter, value int) {
 	res.WriteHeader(http.StatusOK)
 	var format = fmt.Sprintf("status: %d\r\n\r\n", value)
 	res.Write([]byte(format))
-}
-
-func SettingsUpdate(res http.ResponseWriter, req *http.Request) {
-	if req.Method != "POST" {
-		http.Error(res, "not supported!", http.StatusBadRequest)
-	}
-
-	req.ParseForm()
-
-	username := req.FormValue("username")
-	password := req.FormValue("password")
-
-	if username == "" || password == "" {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("<p>Empty fields!</p>"))
-		return
-	}
-
-	var path = PASSWD_FILE
-	output := fmt.Sprintf("%s:%s\n", username, password)
-
-	var mutex = &sync.Mutex{}
-
-	mutex.Lock()
-	f, _ := os.Create(path)
-	f.Write([]byte(output))
-	f.Close()
-	mutex.Unlock()
-
-	filename := "html/success.html"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-		res.Write([]byte("<p>missing internal files!</p>"))
-		return;
-	}
-
-	res.WriteHeader(http.StatusOK)
-	res.Write(body)
-}
-
-type Credentials_t struct {
-        username string;
-        password string;
 }
 
 func CheckAuth(res http.ResponseWriter, username string, password string) (Credentials_t, error) {
@@ -127,7 +91,8 @@ func CheckAuth(res http.ResponseWriter, username string, password string) (Crede
 
 	f, err := os.Open(path)
         if err != nil {
-                return entry, err
+                fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
+                os.Exit(0)
         }
 
         defer f.Close()
@@ -169,18 +134,6 @@ func CheckAuth(res http.ResponseWriter, username string, password string) (Crede
 	return entry, nil
 }
 
-func SettingsIndexShow(res http.ResponseWriter, req *http.Request) {
-	filename := "html/index.html"
-
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
-	}
-
-	res.WriteHeader(http.StatusOK)
-	res.Write(body)
-}
-
 func MainServerRequest(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(res, "unsupported method!", http.StatusBadRequest)
@@ -200,6 +153,7 @@ func MainServerRequest(res http.ResponseWriter, req *http.Request) {
 
 	switch action {
         case "AUTH":
+                // Already checked - do nothing.
                 return
 	case "ADD":
 		SaveToDisk(req, credits.username, directory, file)
@@ -210,20 +164,20 @@ func MainServerRequest(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func SettingsServer() {
-	fmt.Printf("Configure this instance at: http://localhost:8080\n")
-	http.HandleFunc("/", SettingsIndexShow)
-	http.HandleFunc("/config", SettingsUpdate)
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		fmt.Printf("unable to bind to port 8080\n")
-		os.Exit(0)
-	}
+func Init() {
+	f, err := os.Open(PASSWD_FILE)
+        defer f.Close()
+        if err != nil {
+                fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
+                os.Exit(0)
+        }
 }
 
 func MainServer() {
+        Init()
 	http.HandleFunc("/any", MainServerRequest)
-	if err := http.ListenAndServeTLS(":12345", "config/server.crt", "config/server.key", nil); err != nil {
-		fmt.Printf("FATAL: missing public/private keys???\n")
+	if err := http.ListenAndServeTLS(":12345", CERT_FILE, CERT_KEY_FILE, nil); err != nil {
+		fmt.Printf("FATAL: missing public/private key files!\n")
 		os.Exit(0)
 	}
 }
@@ -232,8 +186,6 @@ func main() {
 	fmt.Printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n")
 	fmt.Printf("See: http://haxlab.org\n")
 	fmt.Printf("Running: dropsyd daemon\n")
-
-	go SettingsServer()
 
 	MainServer()
 }
