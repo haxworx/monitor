@@ -12,7 +12,6 @@ import(
 
 const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
-
 const PASSWD_FILE = "config/passwd"
 
 type Credentials_t struct {
