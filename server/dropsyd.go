@@ -165,9 +165,7 @@ func MainServerRequest(res http.ResponseWriter, req *http.Request) {
 }
 
 func Init() {
-	f, err := os.Open(PASSWD_FILE)
-        defer f.Close()
-        if err != nil {
+	if _, err := os.Stat(PASSWD_FILE); err != nil {
                 fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
                 os.Exit(0)
         }
