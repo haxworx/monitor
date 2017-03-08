@@ -10,6 +10,7 @@ import(
 	"os"
 )
 
+const STORAGE_ROOT = "storage"
 const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 const PASSWD_FILE = "config/passwd"
@@ -34,10 +35,10 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-func SaveToDisk(req *http.Request, user string, dir string, file string) {
+func FileSave(req *http.Request, user string, dir string, file string) {
 	var buf = req.Body;
 	if dir == "" || file == "" { return }
-	var path = user + "/" + dir
+	var path = STORAGE_ROOT + "/" + user + "/" + dir
         os.MkdirAll(path, 0777)
 
 	bytes, err := ioutil.ReadAll(buf)
@@ -45,7 +46,7 @@ func SaveToDisk(req *http.Request, user string, dir string, file string) {
 		return
 	}
 
-	path = user + "/" + dir + "/" + file
+	path = STORAGE_ROOT + "/" + user + "/" + dir + "/" + file
 
 	fmt.Printf("create %s\n", path)
 	f, err := os.Create(path)
@@ -53,9 +54,9 @@ func SaveToDisk(req *http.Request, user string, dir string, file string) {
 	f.Close()
 }
 
-func DelFromDisk(user string, dir string, file string) {
+func FileDelete(user string, dir string, file string) {
 	if dir == "" || file == "" { return }
-	var path = user + "/" + dir + "/" + file
+	var path = STORAGE_ROOT + "/" + user + "/" + dir + "/" + file
 	fmt.Printf("remove %s\n", path)
 
 	fi, err := os.Stat(path)
@@ -66,7 +67,7 @@ func DelFromDisk(user string, dir string, file string) {
 	mode := fi.Mode()
 	if !mode.IsDir() {
 		os.Remove(path)
-		path := user + "/" + dir
+		path := STORAGE_ROOT + "/" + user + "/" + dir
 		for DirIsEmpty(path) {
 			fmt.Printf("rmdir %s\n", path)
 			os.Remove(path)
@@ -83,7 +84,7 @@ func SendClientStatus(res http.ResponseWriter, value int) {
 	res.Write([]byte(format))
 }
 
-func CheckAuth(res http.ResponseWriter, username string, password string) (Credentials_t, error) {
+func AuthCheck(res http.ResponseWriter, username string, password string) (Credentials_t, error) {
 	var path = PASSWD_FILE
 
         var entry Credentials_t
@@ -145,7 +146,7 @@ func MainServerRequest(res http.ResponseWriter, req *http.Request) {
 	var action = req.Header.Get("action")
 	var directory = req.Header.Get("directory")
 
-	credits, err := CheckAuth(res, user_guess, pass_guess)
+	credits, err := AuthCheck(res, user_guess, pass_guess)
         if err != nil {
                 return
         }
@@ -155,9 +156,9 @@ func MainServerRequest(res http.ResponseWriter, req *http.Request) {
                 // Already checked - do nothing.
                 return
 	case "ADD":
-		SaveToDisk(req, credits.username, directory, file)
+		FileSave(req, credits.username, directory, file)
 	case "DEL":
-		DelFromDisk(credits.username, directory, file)
+		FileDelete(credits.username, directory, file)
 	default:
 		http.Error(res, "unknown req", http.StatusBadRequest)
 	}
