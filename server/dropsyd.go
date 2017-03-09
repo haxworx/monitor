@@ -16,7 +16,6 @@ const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 const PASSWD_FILE = "config/passwd"
 
-
 func DirIsEmpty(directory string) bool {
 	count := 0
 	files, err := ioutil.ReadDir(directory)
@@ -125,14 +124,15 @@ func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (b
 	return false 
 }
 
-var header_list = []string {
-        "username", "password", "action", "directory", "filename",
-}
 
 func ServerRequest(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(res, "unsupported method!", http.StatusBadRequest)
 		return
+	}
+
+	var header_list = []string {
+		"username", "password", "action", "directory", "filename",
 	}
 
         headers := make(map[string]string)
@@ -147,28 +147,31 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
         }
 
 	switch headers["action"] {
-        case "AUTH":
-                // Already checked - do nothing.
-                return
 	case "ADD":
 		FileSave(req, headers["username"], headers["directory"], headers["filename"])
 	case "DEL":
 		FileDelete(headers["username"], headers["directory"], headers["filename"])
-	default:
-		http.Error(res, "unknown req", http.StatusBadRequest)
 	}
 }
 
 func Init() {
 	if _, err := os.Stat(PASSWD_FILE); err != nil {
-                // if os.IsNotExist(err) 
-                fmt.Printf("FATAL: cannot read (%s)!\n", PASSWD_FILE)
+                if os.IsNotExist(err) {
+			fmt.Printf("FATAL: (%s) does not exist!\n", PASSWD_FILE)
+		} else {
+			fmt.Printf("FATAL: cannot stat() (%s)!\n", PASSWD_FILE)
+		}
                 os.Exit(0)
         }
 }
 
 func Server() {
         Init()
+
+	fmt.Printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n")
+	fmt.Printf("See: http://haxlab.org\n")
+	fmt.Printf("Running: dropsyd daemon\n")
+
 	http.HandleFunc("/any", ServerRequest)
 	if err := http.ListenAndServeTLS(":12345", CERT_FILE, CERT_KEY_FILE, nil); err != nil {
 		fmt.Printf("FATAL: missing public/private key files!\n")
@@ -177,9 +180,6 @@ func Server() {
 }
 
 func main() {
-	fmt.Printf("(c) Copyright 2016. Al Poole <netstar@gmail.com>.\n")
-	fmt.Printf("See: http://haxlab.org\n")
-	fmt.Printf("Running: dropsyd daemon\n")
-
 	Server()
 }
+
