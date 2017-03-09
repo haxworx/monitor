@@ -134,7 +134,7 @@ func AuthCheck(res http.ResponseWriter, username string, password string) (Crede
 	return entry, nil
 }
 
-func MainServerRequest(res http.ResponseWriter, req *http.Request) {
+func ServerRequest(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(res, "unsupported method!", http.StatusBadRequest)
 		return
@@ -172,9 +172,9 @@ func Init() {
         }
 }
 
-func MainServer() {
+func Server() {
         Init()
-	http.HandleFunc("/any", MainServerRequest)
+	http.HandleFunc("/any", ServerRequest)
 	if err := http.ListenAndServeTLS(":12345", CERT_FILE, CERT_KEY_FILE, nil); err != nil {
 		fmt.Printf("FATAL: missing public/private key files!\n")
 		os.Exit(0)
@@ -186,5 +186,5 @@ func main() {
 	fmt.Printf("See: http://haxlab.org\n")
 	fmt.Printf("Running: dropsyd daemon\n")
 
-	MainServer()
+	Server()
 }
