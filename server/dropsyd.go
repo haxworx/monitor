@@ -8,6 +8,7 @@ import(
 	"net/http"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 const STORAGE_ROOT = "storage"
@@ -38,7 +39,7 @@ func DirIsEmpty(directory string) bool {
 func FileSave(req *http.Request, user string, dir string, file string) {
 	var buf = req.Body;
 	if dir == "" || file == "" { return }
-	var path = STORAGE_ROOT + "/" + user + "/" + dir
+	var path = filepath.Join(STORAGE_ROOT, user, dir)
         os.MkdirAll(path, 0777)
 
 	bytes, err := ioutil.ReadAll(buf)
@@ -46,7 +47,7 @@ func FileSave(req *http.Request, user string, dir string, file string) {
 		return
 	}
 
-	path = STORAGE_ROOT + "/" + user + "/" + dir + "/" + file
+	path = filepath.Join(STORAGE_ROOT, user, dir, file)
 
 	fmt.Printf("create %s\n", path)
 	f, err := os.Create(path)
@@ -56,7 +57,7 @@ func FileSave(req *http.Request, user string, dir string, file string) {
 
 func FileDelete(user string, dir string, file string) {
 	if dir == "" || file == "" { return }
-	var path = STORAGE_ROOT + "/" + user + "/" + dir + "/" + file
+	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
 	fmt.Printf("remove %s\n", path)
 
 	fi, err := os.Stat(path)
@@ -67,7 +68,7 @@ func FileDelete(user string, dir string, file string) {
 	mode := fi.Mode()
 	if !mode.IsDir() {
 		os.Remove(path)
-		path := STORAGE_ROOT + "/" + user + "/" + dir
+		path := filepath.Join(STORAGE_ROOT, user, dir)
 		for DirIsEmpty(path) {
 			fmt.Printf("rmdir %s\n", path)
 			os.Remove(path)
