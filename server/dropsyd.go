@@ -80,14 +80,14 @@ func SendClientStatus(res http.ResponseWriter, value int) {
 	res.Write([]byte(format))
 }
 
-func AuthCheck(res http.ResponseWriter, username string, password string) (bool) {
+func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (bool) {
+        if user_guess == "" || pass_guess == "" { return false }
 	f, err := os.Open(PASSWD_FILE)
         if err != nil {
                 fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
                 os.Exit(0)
         }
 
-        fmt.Println(username, password)
         defer f.Close()
 
         r := bufio.NewReader(f) 
@@ -104,7 +104,7 @@ func AuthCheck(res http.ResponseWriter, username string, password string) (bool)
 
                 eou := strings.Index(line, ":")
                 tmp_user := line[0:eou]
-                if tmp_user != username {
+                if tmp_user != user_guess {
                         continue
                 }
 
@@ -112,7 +112,7 @@ func AuthCheck(res http.ResponseWriter, username string, password string) (bool)
 
                 tmp_pass := line[eou + 1:eop];
 
-                if tmp_pass == password {
+                if tmp_pass == pass_guess {
                         SendClientStatus(res, 0)
                         return true
                 } else {
