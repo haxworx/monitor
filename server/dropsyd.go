@@ -16,11 +16,6 @@ const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 const PASSWD_FILE = "config/passwd"
 
-type Credentials_t struct {
-        username string;
-        password string;
-        // OTHER STUFF???
-}
 
 func DirIsEmpty(directory string) bool {
 	count := 0
@@ -85,17 +80,14 @@ func SendClientStatus(res http.ResponseWriter, value int) {
 	res.Write([]byte(format))
 }
 
-func AuthCheck(res http.ResponseWriter, username string, password string) (Credentials_t, error) {
-	var path = PASSWD_FILE
-
-        var entry Credentials_t
-
-	f, err := os.Open(path)
+func AuthCheck(res http.ResponseWriter, username string, password string) (bool) {
+	f, err := os.Open(PASSWD_FILE)
         if err != nil {
                 fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
                 os.Exit(0)
         }
 
+        fmt.Println(username, password)
         defer f.Close()
 
         r := bufio.NewReader(f) 
@@ -103,7 +95,7 @@ func AuthCheck(res http.ResponseWriter, username string, password string) (Crede
         for {
                 bytes, err := r.ReadBytes('\n') 
                 if err != nil {
-                        return entry, err
+                        return false
                 }
 
                 if bytes[0] == '#' { continue }
@@ -120,19 +112,21 @@ func AuthCheck(res http.ResponseWriter, username string, password string) (Crede
 
                 tmp_pass := line[eou + 1:eop];
 
-                entry.username = tmp_user
-	        entry.password = tmp_pass
-                if tmp_pass != password {
-                        SendClientStatus(res, 1)
-                        return entry, nil
+                if tmp_pass == password {
+                        SendClientStatus(res, 0)
+                        return true
                 } else {
                         break
                 }
         }
 
-        SendClientStatus(res, 0)
+        SendClientStatus(res, 1)
 
-	return entry, nil
+	return false 
+}
+
+var header_list = []string {
+        "username", "password", "action", "directory", "filename",
 }
 
 func ServerRequest(res http.ResponseWriter, req *http.Request) {
@@ -141,25 +135,25 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var user_guess = req.Header.Get("username")
-	var pass_guess = req.Header.Get("password")
-	var file = req.Header.Get("filename")
-	var action = req.Header.Get("action")
-	var directory = req.Header.Get("directory")
+        headers := make(map[string]string)
 
-	credits, err := AuthCheck(res, user_guess, pass_guess)
-        if err != nil {
+        for _, name := range(header_list) {
+                headers[name] = req.Header.Get(name)
+        }
+
+	success := AuthCheck(res, headers["username"],headers["password"])
+        if !success {
                 return
         }
 
-	switch action {
+	switch headers["action"] {
         case "AUTH":
                 // Already checked - do nothing.
                 return
 	case "ADD":
-		FileSave(req, credits.username, directory, file)
+		FileSave(req, headers["username"], headers["directory"], headers["filename"])
 	case "DEL":
-		FileDelete(credits.username, directory, file)
+		FileDelete(headers["username"], headers["directory"], headers["filename"])
 	default:
 		http.Error(res, "unknown req", http.StatusBadRequest)
 	}
