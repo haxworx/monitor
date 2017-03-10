@@ -30,6 +30,12 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
+// 0 is good! non-zero is bad!
+func SendClientActionStatus(res http.ResponseWriter, value int) {
+        var status = fmt.Sprintf("STATUS: %d\r\n\r\n", value)
+        res.Write([]byte(status))
+}
+
 func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) {
 	var buf = req.Body;
 
@@ -90,16 +96,7 @@ func FileDelete(res http.ResponseWriter, user string, dir string, file string) {
         SendClientActionStatus(res, 0x0)
 }
 
-func SendClientActionStatus(res http.ResponseWriter, value int) {
-        var status = fmt.Sprintf("STATUS: %d\r\n\r\n", value)
-        res.Write([]byte(status))
-}
 
-func SendClientStatus(res http.ResponseWriter, value int) {
-	res.WriteHeader(http.StatusOK)
-	var format = fmt.Sprintf("status: %d\r\n\r\n", value)
-	res.Write([]byte(format))
-}
 
 func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (bool) {
         if user_guess == "" || pass_guess == "" { return false }
@@ -134,14 +131,14 @@ func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (b
                 tmp_pass := line[eou + 1:eop];
 
                 if tmp_pass == pass_guess {
-                        SendClientStatus(res, 0)
+                        SendClientActionStatus(res, 0x0)
                         return true
                 } else {
                         break
                 }
         }
 
-        SendClientStatus(res, 1)
+        SendClientActionStatus(res, 0x1)
 
 	return false 
 }

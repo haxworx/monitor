@@ -97,7 +97,7 @@ authenticate(void *self)
 	buf[len] = '\0';
 
 	int status = 1000;
-#define AUTH_STATUS_STR "status: "
+#define AUTH_STATUS_STR "STATUS: "
 	char *status_position = strstr(buf, AUTH_STATUS_STR);
 	if (status_position) {
 		status_position = strchr(status_position, ':');
