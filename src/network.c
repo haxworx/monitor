@@ -156,7 +156,7 @@ remote_file_del(void *self, char *file)
         Write(mon, post, strlen(post));
 
         int status;
-        char buf[128];
+        char buf[BUF_MAX];
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
@@ -244,7 +244,7 @@ int remote_file_add(void *self, char *file)
         }
 
         int status;
-        char buf[128];
+        char buf[BUF_MAX];
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
