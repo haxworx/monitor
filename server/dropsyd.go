@@ -30,7 +30,7 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-func FileSave(req *http.Request, user string, dir string, file string) {
+func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) {
 	var buf = req.Body;
 	if dir == "" || file == "" { return }
 	var path = filepath.Join(STORAGE_ROOT, user, dir)
@@ -38,6 +38,7 @@ func FileSave(req *http.Request, user string, dir string, file string) {
 
 	bytes, err := ioutil.ReadAll(buf)
 	if err != nil {
+                SendClientActionStatus(res, 0x1)
 		return
 	}
 
@@ -47,15 +48,18 @@ func FileSave(req *http.Request, user string, dir string, file string) {
 	f, err := os.Create(path)
 	f.Write(bytes)
 	f.Close()
+
+        SendClientActionStatus(res, 0x0)
 }
 
-func FileDelete(user string, dir string, file string) {
+func FileDelete(res http.ResponseWriter, user string, dir string, file string) {
 	if dir == "" || file == "" { return }
 	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
 	fmt.Printf("remove %s\n", path)
 
 	fi, err := os.Stat(path)
 	if err != nil {
+                SendClientActionStatus(res, 0x1)
 		return
 	}
 
@@ -71,6 +75,13 @@ func FileDelete(user string, dir string, file string) {
 			path = path[0:end]
 		}
 	}
+
+        SendClientActionStatus(res, 0x0)
+}
+
+func SendClientActionStatus(res http.ResponseWriter, value int) {
+        var status = fmt.Sprintf("STATUS: %d\r\n\r\n", value)
+        res.Write([]byte(status))
 }
 
 func SendClientStatus(res http.ResponseWriter, value int) {
@@ -148,9 +159,9 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
 
 	switch headers["action"] {
 	case "ADD":
-		FileSave(req, headers["username"], headers["directory"], headers["filename"])
+		FileSave(req, res, headers["username"], headers["directory"], headers["filename"])
 	case "DEL":
-		FileDelete(headers["username"], headers["directory"], headers["filename"])
+		FileDelete(res, headers["username"], headers["directory"], headers["filename"])
 	}
 }
 

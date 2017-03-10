@@ -130,7 +130,7 @@ remote_file_del(void *self, char *file)
         mon->bio = Connect_SSL(mon->hostname, DEFAULT_PORT);
         if (!mon->bio) {
                 fprintf(stderr, "Could not connect()\n");
-                return false;
+                return 1;
         }
 
         int content_length = 0;
@@ -155,9 +155,15 @@ remote_file_del(void *self, char *file)
                  file_from_path);
         Write(mon, post, strlen(post));
 
+        int status;
+        char buf[128];
+
+        int bytes = Read(mon, buf, sizeof(buf));
+        if (bytes <= 0) return 1;
+        if (sscanf(buf, "status: %d\r\n\r\n", &status)) return 1;
         Close(mon);
 
-        return true;
+        return status;
 }
 
 int remote_file_add(void *self, char *file)
@@ -171,15 +177,15 @@ int remote_file_add(void *self, char *file)
         mon->bio = Connect_SSL(mon->hostname, DEFAULT_PORT);
         if (!mon->bio) {
                 fprintf(stderr, "Could not connect()\n");
-                return false;
+                return 1;
         }
         struct stat fstats;
         if (strlen(path) == 0) {
-                return false;
+                return 1;
         }
 
         if (stat(path, &fstats) < 0) {
-                return false;
+                return 1;
         }
         FILE *f = fopen(path, "rb");
         if (f == NULL) {
@@ -220,12 +226,12 @@ int remote_file_add(void *self, char *file)
                         // this is exactly the same with 0 flag
                         ssize_t bytes = Write(mon, buffer, count);
                         if (bytes < count) {
-                                return false;
+                                return 1;
                         }
                         if (bytes == 0) {
                                 break;
                         } else if (bytes < 0) {
-                                return false;
+                                return 1;
                         } else {
                                 size -= bytes;
                                 total += bytes;
@@ -237,9 +243,16 @@ int remote_file_add(void *self, char *file)
                 mon->error("wtf?");
         }
 
-        close(mon->sock);
+        int status;
+        char buf[128];
+
+        int bytes = Read(mon, buf, sizeof(buf));
+        if (bytes <= 0) return 1;
+        if (sscanf(buf, "status: %d\r\n\r\n", &status)) return 1;
+
+        Close(mon);
         fclose(f);
-        return true;
+        return status;
 }
 
 int 

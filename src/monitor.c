@@ -18,21 +18,31 @@ int error(char *str)
 
 int n_jobs = 0;
 
-void
+int
 wait_for_job(void)
 {
-	pid_t pid = wait(NULL);
+        int status;
+	pid_t pid = wait(&status);
 	if (pid <= 0)
 		error("wait");	
+  
+        status = WEXITSTATUS(status);
+  
+        //printf("Status is %d\n", status); 
 	--n_jobs;
+
+        return ! status;
 }
 
-void 
+int
 wait_for_all_jobs(void)
 {
 	while (n_jobs) {
-		wait_for_job();
+		int success = wait_for_job();
+                if (!success) return 0;
 	}
+
+        return 1;
 }
 
 monitor_t *monitor_new(void)
@@ -162,8 +172,8 @@ _check_add_files(monitor_t *mon, file_t *first, file_t *second)
 			if (pid < 0)
 				error("fork");
 			else if (pid == 0) {
-				mon->remote_add(mon->self, f->path);
-				exit(0);
+			        int status = mon->remote_add(mon->self, f->path);
+				exit(status);
 			}
 			++n_jobs;
 			if (!first_run)
@@ -222,8 +232,8 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 				if (pid < 0)
 					error("fork");
 				else if (pid == 0) {
-					mon->remote_add(mon->self, f->path);
-					exit(0);
+					int status = mon->remote_add(mon->self, f->path);
+					exit(status);
 				}
 				++n_jobs;
 				printf("mod file : %s\n", f->path);
@@ -236,9 +246,17 @@ _check_mod_files(monitor_t* mon, file_t *first, file_t *second)
 	return changes;
 }
 
+void
+_transfer_error(void)
+{
+        fprintf(stderr, "FATAL: transfer error. Test network and retry!\n");
+        exit(1);
+}
+
 int
 file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 {
+        int success = 0;
 	int modifications = 0;
 	int total = 0;
 
@@ -249,19 +267,25 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
 	modifications = _check_add_files(monitor, first, second);
         if (modifications) {
 		total += modifications;
-		wait_for_all_jobs();	
+		success = wait_for_all_jobs(); 
+                if (!success) 
+                        _transfer_error();
 	}
 
 	modifications = _check_mod_files(monitor, first, second);
         if (modifications) {
 		total += modifications;
-		wait_for_all_jobs();	
+		success = wait_for_all_jobs();	
+                if (!success) 
+                        _transfer_error();
 	}
 	
 	modifications = _check_del_files(monitor, first, second);
         if (modifications) {
 		total += modifications;
-		wait_for_all_jobs();	
+		success = wait_for_all_jobs();	
+                if (!success) 
+                        _transfer_error();
 	}
 
 	if (total) {
