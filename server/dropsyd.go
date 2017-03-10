@@ -32,7 +32,12 @@ func DirIsEmpty(directory string) bool {
 
 func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) {
 	var buf = req.Body;
-	if dir == "" || file == "" { return }
+
+	if dir == "" || file == "" { 
+                SendClientActionStatus(res, 0x2)
+                return 
+        }
+
 	var path = filepath.Join(STORAGE_ROOT, user, dir)
         os.MkdirAll(path, 0777)
 
@@ -46,6 +51,12 @@ func FileSave(req *http.Request, res http.ResponseWriter, user string, dir strin
 
 	fmt.Printf("create %s\n", path)
 	f, err := os.Create(path)
+        if err != nil {
+                fmt.Printf("FATAL: could not create: %s!\n", path)
+                SendClientActionStatus(res, 0x1)
+                os.Exit(1)
+        }
+
 	f.Write(bytes)
 	f.Close()
 
