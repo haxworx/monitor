@@ -22,7 +22,7 @@ system_cpu_count(void)
 		cores = atoi(cpu_count);
 		return cores;
 	}
-#if defined(__FreeBSD__) || defined(__DragonFly_) || defined(__OpenBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	size_t len;
 	int mib[2] = { CTL_HW, HW_NCPU };
 
