@@ -268,24 +268,27 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
         if (modifications) {
 		total += modifications;
 		success = wait_for_all_jobs(); 
-                if (!success) 
-                        _transfer_error();
+                if (!success) {
+                       _transfer_error();
+		}
 	}
 
 	modifications = _check_mod_files(monitor, first, second);
         if (modifications) {
 		total += modifications;
 		success = wait_for_all_jobs();	
-                if (!success) 
+                if (!success) {
                         _transfer_error();
+		}
 	}
 	
 	modifications = _check_del_files(monitor, first, second);
         if (modifications) {
 		total += modifications;
 		success = wait_for_all_jobs();	
-                if (!success) 
+                if (!success) {
                         _transfer_error();
+		}
 	}
 
 	if (total) {
