@@ -97,7 +97,7 @@ authenticate(void *self)
 	buf[len] = '\0';
 
 	int status = 1000;
-#define AUTH_STATUS_STR "STATUS: "
+#define AUTH_STATUS_STR "status: "
 	char *status_position = strstr(buf, AUTH_STATUS_STR);
 	if (status_position) {
 		status_position = strchr(status_position, ':');
@@ -112,7 +112,7 @@ authenticate(void *self)
 		}
 	}
 
-	if (status != 0)
+	if (status != 1)
 		mon->error("Invalid username or password");
 
 	Close(mon);
@@ -160,10 +160,10 @@ remote_file_del(void *self, char *file)
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
-        if (sscanf(buf, "status: %d\r\n\r\n", &status)) return 1;
+        if (sscanf(buf, "status: %d\r\n\r\n", &status) != 1) return 1;
         Close(mon);
 
-        return status;
+        return 0;
 }
 
 int remote_file_add(void *self, char *file)
@@ -243,16 +243,16 @@ int remote_file_add(void *self, char *file)
                 mon->error("wtf?");
         }
 
+        fclose(f);
         int status;
         char buf[BUF_MAX];
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
-        if (sscanf(buf, "status: %d\r\n\r\n", &status)) return 1;
+        if (sscanf(buf, "status: %d\r\n\r\n", &status) != 1) return 1;
 
         Close(mon);
-        fclose(f);
-        return status;
+        return 0;
 }
 
 int 

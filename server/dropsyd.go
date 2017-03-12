@@ -30,18 +30,19 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-// 0 is good! non-zero is bad!
-func SendClientActionStatus(res http.ResponseWriter, value int) {
-        var status = fmt.Sprintf("STATUS: %d\r\n\r\n", value)
+// 1 is good and 0 is bad!
+func SendClientActionStatus(res http.ResponseWriter, value int) (int) {
+        var status = fmt.Sprintf("status: %d\r\n\r\n", value)
         res.Write([]byte(status))
+
+	return value
 }
 
-func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) {
+func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) int {
 	var buf = req.Body;
 
 	if dir == "" || file == "" { 
-                SendClientActionStatus(res, 0x2)
-                return 
+                return SendClientActionStatus(res, 0)
         }
 
 	var path = filepath.Join(STORAGE_ROOT, user, dir)
@@ -49,8 +50,7 @@ func FileSave(req *http.Request, res http.ResponseWriter, user string, dir strin
 
 	bytes, err := ioutil.ReadAll(buf)
 	if err != nil {
-                SendClientActionStatus(res, 0x1)
-		return
+                return SendClientActionStatus(res, 0)
 	}
 
 	path = filepath.Join(STORAGE_ROOT, user, dir, file)
@@ -59,25 +59,24 @@ func FileSave(req *http.Request, res http.ResponseWriter, user string, dir strin
 	f, err := os.Create(path)
         if err != nil {
                 fmt.Printf("FATAL: could not create: %s!\n", path)
-                SendClientActionStatus(res, 0x1)
+                SendClientActionStatus(res, 0)
                 os.Exit(1)
         }
 
 	f.Write(bytes)
 	f.Close()
 
-        SendClientActionStatus(res, 0x0)
+        return SendClientActionStatus(res, 1)
 }
 
-func FileDelete(res http.ResponseWriter, user string, dir string, file string) {
-	if dir == "" || file == "" { return }
+func FileDelete(res http.ResponseWriter, user string, dir string, file string) (int) {
+	if dir == "" || file == "" { return 0 }
 	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
 	fmt.Printf("remove %s\n", path)
 
 	fi, err := os.Stat(path)
 	if err != nil {
-                SendClientActionStatus(res, 0x1)
-		return
+                return SendClientActionStatus(res, 0)
 	}
 
 	mode := fi.Mode()
@@ -90,16 +89,17 @@ func FileDelete(res http.ResponseWriter, user string, dir string, file string) {
 			end := strings.LastIndex(path, "/")
 			if end < 0 { break }
 			path = path[0:end]
+			fmt.Println(path);
 		}
 	}
 
-        SendClientActionStatus(res, 0x0)
+        return SendClientActionStatus(res, 1)
 }
 
 
 
-func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (bool) {
-        if user_guess == "" || pass_guess == "" { return false }
+func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (int) {
+        if user_guess == "" || pass_guess == "" { return 0 }
 	f, err := os.Open(PASSWD_FILE)
         if err != nil {
                 fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
@@ -113,7 +113,7 @@ func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (b
         for {
                 bytes, err := r.ReadBytes('\n') 
                 if err != nil {
-                        return false
+                        return 0
                 }
 
                 if bytes[0] == '#' { continue }
@@ -131,16 +131,13 @@ func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (b
                 tmp_pass := line[eou + 1:eop];
 
                 if tmp_pass == pass_guess {
-                        SendClientActionStatus(res, 0x0)
-                        return true
+                        return SendClientActionStatus(res, 1)
                 } else {
                         break
                 }
         }
 
-        SendClientActionStatus(res, 0x1)
-
-	return false 
+        return SendClientActionStatus(res, 0)
 }
 
 
@@ -161,15 +158,14 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
         }
 
 	success := AuthCheck(res, headers["username"],headers["password"])
-        if !success {
-                return
-        }
+        if (success != 1) { fmt.Printf("shit no! %s\n", success); return }
 
 	switch headers["action"] {
 	case "ADD":
 		FileSave(req, res, headers["username"], headers["directory"], headers["filename"])
 	case "DEL":
 		FileDelete(res, headers["username"], headers["directory"], headers["filename"])
+	default:
 	}
 }
 
