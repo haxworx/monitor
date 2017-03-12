@@ -200,8 +200,17 @@ _check_del_files(monitor_t *mon, file_t *first, file_t *second)
 			f->changed = MONITOR_DEL;
 			if (mon->del_callback) 
 				mon->del_callback(f);
-
-			mon->remote_del(mon->self, f->path);
+                        if (n_jobs == mon->cpu_count) {
+                                wait_for_job();
+                        }
+                        pid_t pid = fork();
+                        if (pid < 0)
+                                error("fork");
+                        else if (pid == 0) {
+                                int status = mon->remote_del(mon->self, f->path);
+                                exit(status);
+                        }
+                        ++n_jobs;
 			printf("del file : %s\n", f->path);
 			changes++;
 		}
@@ -286,7 +295,9 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
         if (modifications) {
 		total += modifications;
 		success = wait_for_all_jobs();	
-                // we don't transfer don't check here!
+                if (!success) {
+                        _transfer_error();
+                }
 	}
 
 	if (total) {
