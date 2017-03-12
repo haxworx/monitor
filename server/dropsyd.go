@@ -34,7 +34,6 @@ func DirIsEmpty(directory string) bool {
 func SendClientActionStatus(res http.ResponseWriter, value int) (int) {
         var status = fmt.Sprintf("status: %d\r\n\r\n", value)
         res.Write([]byte(status))
-fmt.Println(value);
 	return value
 }
 
@@ -82,14 +81,14 @@ func FileDelete(res http.ResponseWriter, user string, dir string, file string) (
 	mode := fi.Mode()
 	if !mode.IsDir() {
 		os.Remove(path)
-		path := filepath.Join(STORAGE_ROOT, user, dir)
+		//path := filepath.Join(STORAGE_ROOT, user, dir)
+		path := STORAGE_ROOT + "/" +  user + "/" + dir;
 		for DirIsEmpty(path) {
 			fmt.Printf("rmdir %s\n", path)
 			os.Remove(path)
 			end := strings.LastIndex(path, "/")
 			if end < 0 { break }
 			path = path[0:end]
-			fmt.Println(path);
 		}
 	}
 
