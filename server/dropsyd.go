@@ -34,7 +34,7 @@ func DirIsEmpty(directory string) bool {
 func SendClientActionStatus(res http.ResponseWriter, value int) (int) {
         var status = fmt.Sprintf("status: %d\r\n\r\n", value)
         res.Write([]byte(status))
-
+fmt.Println(value);
 	return value
 }
 
@@ -158,7 +158,7 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
         }
 
 	success := AuthCheck(res, headers["username"],headers["password"])
-        if (success != 1) { fmt.Printf("shit no! %s\n", success); return }
+        if (success != 1) { return }
 
 	switch headers["action"] {
 	case "ADD":

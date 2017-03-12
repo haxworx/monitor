@@ -160,6 +160,7 @@ remote_file_del(void *self, char *file)
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
+        buf[bytes] = '\0';
         if (sscanf(buf, "status: %d\r\n\r\n", &status) != 1) return 1;
         Close(mon);
 
@@ -211,7 +212,6 @@ int remote_file_add(void *self, char *file)
             "Username: %s\r\n"
             "Password: %s\r\n"
             "Filename: %s\r\n" "Directory: %s\r\n" "Action: ADD\r\n\r\n";
-
         snprintf(post, sizeof(post), fmt, REMOTE_URI, mon->hostname,
                  content_length, mon->username, mon->password, file_from_path,
                  dir_from_path);
@@ -249,6 +249,7 @@ int remote_file_add(void *self, char *file)
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
+        buf[bytes] = '\0';
         if (sscanf(buf, "status: %d\r\n\r\n", &status) != 1) return 1;
 
         Close(mon);

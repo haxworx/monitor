@@ -16,22 +16,22 @@ int error(char *str)
 	exit(1 << 7);
 }
 
-int n_jobs = 0;
+static int n_jobs = 0;
 
 int
 wait_for_job(void)
 {
-        int status;
+        int status; 
 	pid_t pid = wait(&status);
 	if (pid <= 0)
 		error("wait");	
-  
+        
+        if (!WIFEXITED(status)) return 1; 
         status = WEXITSTATUS(status);
   
         //printf("Status is %d\n", status); 
 	--n_jobs;
-
-        return ! status;
+        return status;
 }
 
 int
@@ -286,9 +286,7 @@ file_lists_compare(monitor_t *monitor, file_t *first, file_t *second)
         if (modifications) {
 		total += modifications;
 		success = wait_for_all_jobs();	
-                if (!success) {
-                        _transfer_error();
-		}
+                // we don't transfer don't check here!
 	}
 
 	if (total) {
@@ -350,6 +348,8 @@ scan_recursive(const char *path)
 		snprintf(buf, sizeof(buf), "%s%c%s", path, SLASH, dh->d_name);
 		struct stat fstat;
 		if (stat(buf, &fstat) < 0) continue;
+
+                if (S_ISLNK(fstat.st_mode)) continue;
 
 		if (S_ISDIR(fstat.st_mode)) {
 			directories[i++] = strdup(buf);			
