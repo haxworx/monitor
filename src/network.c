@@ -59,6 +59,27 @@ _directory_from_path(char *path)
 }
 
 int
+_status_code(char *buf)
+{
+#define AUTH_STATUS_STR "status: "
+        int status = 1000;
+        char *status_position = strstr(buf, AUTH_STATUS_STR);
+        if (status_position) {
+                status_position = strchr(status_position, ':');
+                ++status_position;
+                char *start = status_position;
+                while (*status_position != '\r')
+                        status_position++;
+                if (*status_position == '\r') {
+                        *status_position = '\0';
+                        status = atoi(start);
+                }
+        }
+
+        return status;
+}        
+
+int
 authenticate(void *self)
 {
 	monitor_t *mon = self;
@@ -96,26 +117,12 @@ authenticate(void *self)
 	len = Read(mon, buf, sizeof(buf));
 	buf[len] = '\0';
 
-	int status = 1000;
-#define AUTH_STATUS_STR "status: "
-	char *status_position = strstr(buf, AUTH_STATUS_STR);
-	if (status_position) {
-		status_position = strchr(status_position, ':');
-		status_position++;
-		char *status_start = status_position;
-		while (*status_position != '\r') 
-			status_position++;
+	int status = _status_code(buf);
 
-		if (*status_position == '\r') {
-			*status_position = '\0';
-			status = atoi(status_start);
-		}
-	}
+	Close(mon);
 
 	if (status != 1)
 		mon->error("Invalid username or password");
-
-	Close(mon);
 
 	return 0;
 }
@@ -155,14 +162,17 @@ remote_file_del(void *self, char *file)
                  file_from_path);
         Write(mon, post, strlen(post));
 
-        int status;
         char buf[BUF_MAX];
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
         buf[bytes] = '\0';
-        if (sscanf(buf, "status: %d\r\n\r\n", &status) != 1) return 1;
+	
         Close(mon);
+
+        int status = _status_code(buf);
+        if (status != 1) return 1;
+
 
         return 0;
 }
@@ -244,15 +254,18 @@ int remote_file_add(void *self, char *file)
         }
 
         fclose(f);
-        int status;
+        
         char buf[BUF_MAX];
 
         int bytes = Read(mon, buf, sizeof(buf));
         if (bytes <= 0) return 1;
         buf[bytes] = '\0';
-        if (sscanf(buf, "status: %d\r\n\r\n", &status) != 1) return 1;
 
         Close(mon);
+
+	int status = _status_code(buf);
+        if (status != 1) return 1;
+
         return 0;
 }
 

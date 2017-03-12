@@ -38,8 +38,8 @@ int
 wait_for_all_jobs(void)
 {
 	while (n_jobs) {
-		int success = wait_for_job();
-                if (!success) return 0;
+		int error = wait_for_job();
+                if (error) return 0;
 	}
 
         return 1;
