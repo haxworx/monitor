@@ -89,7 +89,7 @@ authenticate(void *self)
 			mon->username, mon->hostname);
 
 	char *guess = getpass(echo_to_screen);
-	if (strlen(guess) == 0) exit(1 << 2);
+	if (!guess || strlen(guess) == 0) exit(1 << 2);
 
 	mon->password = strdup(guess);
 
