@@ -16,85 +16,6 @@ const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 const PASSWD_FILE = "config/passwd"
 
-func DirIsEmpty(directory string) bool {
-	count := 0
-	files, err := ioutil.ReadDir(directory)
-	if err != nil {
-		return false
-	}
-
-	count = len(files)
-	if count > 0 {
-		return false;
-	}
-	return true;
-}
-
-// 1 is good and 0 is bad!
-func SendClientActionStatus(res http.ResponseWriter, value int) (int) {
-        var status = fmt.Sprintf("status: %d\r\n\r\n", value)
-        res.Write([]byte(status))
-	return value
-}
-
-func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) int {
-	var buf = req.Body;
-
-	if dir == "" || file == "" { 
-                return SendClientActionStatus(res, 0)
-        }
-
-	var path = filepath.Join(STORAGE_ROOT, user, dir)
-        os.MkdirAll(path, 0777)
-
-	bytes, err := ioutil.ReadAll(buf)
-	if err != nil {
-                return SendClientActionStatus(res, 0)
-	}
-
-	path = filepath.Join(STORAGE_ROOT, user, dir, file)
-
-	fmt.Printf("create %s\n", path)
-	f, err := os.Create(path)
-        if err != nil {
-                fmt.Printf("FATAL: could not create: %s!\n", path)
-                SendClientActionStatus(res, 0)
-                os.Exit(1)
-        }
-
-	f.Write(bytes)
-	f.Close()
-
-        return SendClientActionStatus(res, 1)
-}
-
-func FileDelete(res http.ResponseWriter, user string, dir string, file string) (int) {
-	if dir == "" || file == "" { return 0 }
-	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
-	fmt.Printf("remove %s\n", path)
-
-	fi, err := os.Stat(path)
-	if err != nil {
-                return SendClientActionStatus(res, 0)
-	}
-
-	mode := fi.Mode()
-	if !mode.IsDir() {
-		os.Remove(path)
-		//path := filepath.Join(STORAGE_ROOT, user, dir)
-		path := STORAGE_ROOT + "/" +  user + "/" + dir;
-		for DirIsEmpty(path) {
-			fmt.Printf("rmdir %s\n", path)
-			os.Remove(path)
-			end := strings.LastIndex(path, "/")
-			if end < 0 { break }
-			path = path[0:end]
-		}
-	}
-
-        return SendClientActionStatus(res, 1)
-}
-
 type User struct {
         pid     int32
         username string
@@ -136,7 +57,7 @@ func (self *Auth) LoadFromFile() (bool) {
                 var tmp User = User{}
                 tmp.username = tmp_user
                 tmp.password = tmp_pass
-                self.Users[tmp_user] = tmp 
+                self.Users[tmp_user] = tmp
         }
 
         self.was_initialized = true
@@ -151,15 +72,94 @@ func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess s
         }
 
         if self.Users[user_guess].username != user_guess {
-                return SendClientActionStatus(res, 0)
+                return SendClientStatus(res, 0)
         }
 
         if self.Users[user_guess].password != pass_guess {
-                return SendClientActionStatus(res, 0)
+                return SendClientStatus(res, 0)
         }
 
         /* Works! */
-        return SendClientActionStatus(res, 1)
+        return SendClientStatus(res, 1)
+}
+
+func DirIsEmpty(directory string) bool {
+	count := 0
+	files, err := ioutil.ReadDir(directory)
+	if err != nil {
+		return false
+	}
+
+	count = len(files)
+	if count > 0 {
+		return false;
+	}
+	return true;
+}
+
+// 1 is good and 0 is bad!
+func SendClientStatus(res http.ResponseWriter, value int) (int) {
+        var status = fmt.Sprintf("status: %d\r\n\r\n", value)
+        res.Write([]byte(status))
+	return value
+}
+
+func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) int {
+	var buf = req.Body;
+
+	if dir == "" || file == "" {
+                return SendClientStatus(res, 0)
+        }
+
+	var path = filepath.Join(STORAGE_ROOT, user, dir)
+        os.MkdirAll(path, 0777)
+
+	bytes, err := ioutil.ReadAll(buf)
+	if err != nil {
+                return SendClientStatus(res, 0)
+	}
+
+	path = filepath.Join(STORAGE_ROOT, user, dir, file)
+
+	fmt.Printf("create %s\n", path)
+	f, err := os.Create(path)
+        if err != nil {
+                fmt.Printf("FATAL: could not create: %s!\n", path)
+                SendClientStatus(res, 0)
+                os.Exit(1)
+        }
+
+	f.Write(bytes)
+	f.Close()
+
+        return SendClientStatus(res, 1)
+}
+
+func FileDelete(res http.ResponseWriter, user string, dir string, file string) (int) {
+	if dir == "" || file == "" { return 0 }
+	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
+	fmt.Printf("remove %s\n", path)
+
+	fi, err := os.Stat(path)
+	if err != nil {
+                return SendClientStatus(res, 0)
+	}
+
+	mode := fi.Mode()
+	if !mode.IsDir() {
+		os.Remove(path)
+		//path := filepath.Join(STORAGE_ROOT, user, dir)
+		path := STORAGE_ROOT + "/" +  user + "/" + dir;
+		for DirIsEmpty(path) {
+			fmt.Printf("rmdir %s\n", path)
+			os.Remove(path)
+			end := strings.LastIndex(path, "/")
+			if end < 0 { break }
+			path = path[0:end]
+		}
+	}
+
+        return SendClientStatus(res, 1)
 }
 
 
