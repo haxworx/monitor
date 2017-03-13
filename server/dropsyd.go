@@ -9,6 +9,7 @@ import(
 	"io/ioutil"
 	"os"
 	"path/filepath"
+        "time"
 )
 
 const STORAGE_ROOT = "storage"
@@ -38,7 +39,7 @@ func DirIsEmpty(directory string) bool {
 }
 
 type User struct {
-        pid     int32
+        uid int32
         username string
         password string
         name string
@@ -46,6 +47,7 @@ type User struct {
 
 type Auth struct {
         Users map[string]User
+        last_update int64
         have_auth_data bool 
 }
 
@@ -82,6 +84,7 @@ func (self *Auth) LoadFromFile() (bool) {
         }
 
         self.have_auth_data = true
+        self.last_update = time.Now().Unix()
 
         return true
 }
