@@ -16,6 +16,13 @@ const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 const PASSWD_FILE = "config/passwd"
 
+// 1 is good and 0 is bad!
+func SendClientStatus(res http.ResponseWriter, value int) (int) {
+        var status = fmt.Sprintf("status: %d\r\n\r\n", value)
+        res.Write([]byte(status))
+	return value
+}
+
 type User struct {
         pid     int32
         username string
@@ -97,14 +104,26 @@ func DirIsEmpty(directory string) bool {
 	return true;
 }
 
-// 1 is good and 0 is bad!
-func SendClientStatus(res http.ResponseWriter, value int) (int) {
-        var status = fmt.Sprintf("status: %d\r\n\r\n", value)
-        res.Write([]byte(status))
-	return value
+type Action struct {
+	res http.ResponseWriter
+	req *http.Request
+	action string
 }
 
-func FileSave(req *http.Request, res http.ResponseWriter, user string, dir string, file string) int {
+func (self *Action) Process(req *http.Request, res http.ResponseWriter, action string, user string, dir string, file string) {
+	act := Action { req: req, res: res, action: action }
+	switch act.action {
+	case "ADD":
+		act.Save(user, dir, file)
+	case "DEL":
+		act.Delete(user, dir, file)
+	}
+}
+
+func (self *Action) Save(user string, dir string, file string) int {
+	res := self.res
+	req := self.req
+
 	var buf = req.Body;
 
 	if dir == "" || file == "" {
@@ -135,11 +154,12 @@ func FileSave(req *http.Request, res http.ResponseWriter, user string, dir strin
         return SendClientStatus(res, 1)
 }
 
-func FileDelete(res http.ResponseWriter, user string, dir string, file string) (int) {
+func (self *Action) Delete(user string, dir string, file string) (int) {
 	if dir == "" || file == "" { return 0 }
 	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
 	fmt.Printf("remove %s\n", path)
 
+	res := self.res
 	fi, err := os.Stat(path)
 	if err != nil {
                 return SendClientStatus(res, 0)
@@ -162,7 +182,6 @@ func FileDelete(res http.ResponseWriter, user string, dir string, file string) (
         return SendClientStatus(res, 1)
 }
 
-
 func ServerRequest(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(res, "unsupported method!", http.StatusBadRequest)
@@ -182,13 +201,8 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
 	success := auth.Check(res, headers["username"],headers["password"])
         if (success != 1) { return }
 
-	switch headers["action"] {
-	case "ADD":
-		FileSave(req, res, headers["username"], headers["directory"], headers["filename"])
-	case "DEL":
-		FileDelete(res, headers["username"], headers["directory"], headers["filename"])
-	default:
-	}
+	action := Action{}
+	action.Process(req, res, headers["action"], headers["username"], headers["directory"], headers["filename"])
 }
 
 func Init() {
