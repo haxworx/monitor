@@ -46,7 +46,7 @@ type User struct {
 
 type Auth struct {
         Users map[string]User
-        was_initialized bool 
+        have_auth_data bool 
 }
 
 var auth Auth
@@ -81,13 +81,13 @@ func (self *Auth) LoadFromFile() (bool) {
                 self.Users[tmp_user] = tmp
         }
 
-        self.was_initialized = true
+        self.have_auth_data = true
 
         return true
 }
 
 func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess string) (int) {
-        if !self.was_initialized {
+        if !self.have_auth_data {
                 self.Users = make(map[string]User)
                 self.LoadFromFile()
         }
@@ -215,7 +215,7 @@ func Init() {
                 os.Exit(0)
         }
 
-        auth = Auth{ was_initialized: false }
+        auth = Auth{ have_auth_data: false }
 }
 
 func Server() {
