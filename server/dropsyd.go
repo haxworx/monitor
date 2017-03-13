@@ -23,6 +23,20 @@ func SendClientStatus(res http.ResponseWriter, value int) (int) {
 	return value
 }
 
+func DirIsEmpty(directory string) bool {
+	count := 0
+	files, err := ioutil.ReadDir(directory)
+	if err != nil {
+		return false
+	}
+
+	count = len(files)
+	if count > 0 {
+		return false;
+	}
+	return true;
+}
+
 type User struct {
         pid     int32
         username string
@@ -90,34 +104,10 @@ func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess s
         return SendClientStatus(res, 1)
 }
 
-func DirIsEmpty(directory string) bool {
-	count := 0
-	files, err := ioutil.ReadDir(directory)
-	if err != nil {
-		return false
-	}
-
-	count = len(files)
-	if count > 0 {
-		return false;
-	}
-	return true;
-}
-
 type Action struct {
 	res http.ResponseWriter
 	req *http.Request
 	action string
-}
-
-func (self *Action) Process(req *http.Request, res http.ResponseWriter, action string, user string, dir string, file string) {
-	act := Action { req: req, res: res, action: action }
-	switch act.action {
-	case "ADD":
-		act.Save(user, dir, file)
-	case "DEL":
-		act.Delete(user, dir, file)
-	}
 }
 
 func (self *Action) Save(user string, dir string, file string) int {
@@ -182,7 +172,17 @@ func (self *Action) Delete(user string, dir string, file string) (int) {
         return SendClientStatus(res, 1)
 }
 
-func ServerRequest(res http.ResponseWriter, req *http.Request) {
+func (self *Action) Process(user string, dir string, file string) {
+	switch self.action {
+	case "ADD":
+		self.Save(user, dir, file)
+	case "DEL":
+		self.Delete(user, dir, file)
+	}
+}
+
+
+func ClientRequest(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(res, "unsupported method!", http.StatusBadRequest)
 		return
@@ -201,8 +201,8 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
 	success := auth.Check(res, headers["username"],headers["password"])
         if (success != 1) { return }
 
-	action := Action{}
-	action.Process(req, res, headers["action"], headers["username"], headers["directory"], headers["filename"])
+	action := Action{ req: req, res: res, action: headers["action"]}
+	action.Process(headers["username"], headers["directory"], headers["filename"])
 }
 
 func Init() {
@@ -225,7 +225,7 @@ func Server() {
 	fmt.Printf("See: http://haxlab.org\n")
 	fmt.Printf("Running: dropsyd daemon\n")
 
-	http.HandleFunc("/any", ServerRequest)
+	http.HandleFunc("/any", ClientRequest)
 	if err := http.ListenAndServeTLS(":12345", CERT_FILE, CERT_KEY_FILE, nil); err != nil {
 		fmt.Printf("FATAL: missing public/private key files!\n")
 		os.Exit(0)
