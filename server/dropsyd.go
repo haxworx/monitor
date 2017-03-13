@@ -95,11 +95,22 @@ func FileDelete(res http.ResponseWriter, user string, dir string, file string) (
         return SendClientActionStatus(res, 1)
 }
 
+type User struct {
+        pid     int32
+        username string
+        password string
+        name string
+}
 
+type Auth struct {
+        Users map[string]User
+        was_initialized bool 
+}
 
-func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (int) {
-        if user_guess == "" || pass_guess == "" { return 0 }
-	f, err := os.Open(PASSWD_FILE)
+var auth Auth
+
+func (self *Auth) LoadFromFile() (bool) {
+        f, err := os.Open(PASSWD_FILE)
         if err != nil {
                 fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
                 os.Exit(0)
@@ -107,13 +118,11 @@ func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (i
 
         defer f.Close()
 
-        r := bufio.NewReader(f) 
+        r := bufio.NewReader(f)
 
         for {
-                bytes, err := r.ReadBytes('\n') 
-                if err != nil {
-                        return 0
-                }
+                bytes, err := r.ReadBytes('\n')
+                if err != nil { break }
 
                 if bytes[0] == '#' { continue }
 
@@ -121,22 +130,36 @@ func AuthCheck(res http.ResponseWriter, user_guess string, pass_guess string) (i
 
                 eou := strings.Index(line, ":")
                 tmp_user := line[0:eou]
-                if tmp_user != user_guess {
-                        continue
-                }
 
                 eop := strings.Index(line, "\n")
-
                 tmp_pass := line[eou + 1:eop];
-
-                if tmp_pass == pass_guess {
-                        return SendClientActionStatus(res, 1)
-                } else {
-                        break
-                }
+                var tmp User = User{}
+                tmp.username = tmp_user
+                tmp.password = tmp_pass
+                self.Users[tmp_user] = tmp 
         }
 
-        return SendClientActionStatus(res, 0)
+        self.was_initialized = true
+
+        return true
+}
+
+func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess string) (int) {
+        if !self.was_initialized {
+                self.Users = make(map[string]User)
+                self.LoadFromFile()
+        }
+
+        if self.Users[user_guess].username != user_guess {
+                return SendClientActionStatus(res, 0)
+        }
+
+        if self.Users[user_guess].password != pass_guess {
+                return SendClientActionStatus(res, 0)
+        }
+
+        /* Works! */
+        return SendClientActionStatus(res, 1)
 }
 
 
@@ -156,7 +179,7 @@ func ServerRequest(res http.ResponseWriter, req *http.Request) {
                 headers[name] = req.Header.Get(name)
         }
 
-	success := AuthCheck(res, headers["username"],headers["password"])
+	success := auth.Check(res, headers["username"],headers["password"])
         if (success != 1) { return }
 
 	switch headers["action"] {
@@ -177,6 +200,8 @@ func Init() {
 		}
                 os.Exit(0)
         }
+
+        auth = Auth{ was_initialized: false }
 }
 
 func Server() {
