@@ -8,7 +8,7 @@ import(
 	"./net"
 )
 
-const URL = "/any"
+const POST_PATH = "/any"
 const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 
@@ -41,9 +41,9 @@ func HandleRequest(res http.ResponseWriter, req *http.Request) {
 }
 
 func Server() {
-        http.HandleFunc(URL, HandleRequest)
+        http.HandleFunc(POST_PATH, HandleRequest)
         if err := http.ListenAndServeTLS(":12345", CERT_FILE, CERT_KEY_FILE, nil); err != nil {
-                fmt.Println("FATAL: missing public/private key files!\n")
+                fmt.Printf("%s!\n", err)
         }
 }
 
