@@ -1,5 +1,4 @@
-package main
-// as always a work in progres...
+package action
 
 import(
 	"fmt"
@@ -8,7 +7,10 @@ import(
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"../net"
 )
+
+const STORAGE_ROOT = "storage"
 
 func DirIsEmpty(directory string) bool {
 	count := 0
@@ -31,6 +33,15 @@ type Action struct {
 	action string
 }
 
+func New(req *http.Request, res http.ResponseWriter, action string) (*Action) {
+	this := new(Action)
+	this.req = req
+	this.res = res
+	this.action = action
+
+	return this
+}
+
 func (self *Action) Save(user string, dir string, file string) int {
 	res := self.res
 	req := self.req
@@ -38,7 +49,7 @@ func (self *Action) Save(user string, dir string, file string) int {
 	var buf = req.Body;
 
 	if dir == "" || file == "" {
-                return SendClientStatus(res, 0)
+                return net.SendClientStatus(res, 0)
         }
 
 	var path = filepath.Join(STORAGE_ROOT, user, dir)
@@ -46,7 +57,7 @@ func (self *Action) Save(user string, dir string, file string) int {
 
 	bytes, err := ioutil.ReadAll(buf)
 	if err != nil {
-                return SendClientStatus(res, 0)
+                return net.SendClientStatus(res, 0)
 	}
 
 	path = filepath.Join(STORAGE_ROOT, user, dir, file)
@@ -55,14 +66,14 @@ func (self *Action) Save(user string, dir string, file string) int {
 	f, err := os.Create(path)
         if err != nil {
                 fmt.Printf("FATAL: could not create: %s!\n", path)
-                SendClientStatus(res, 0)
+                net.SendClientStatus(res, 0)
                 os.Exit(1)
         }
 
 	f.Write(bytes)
 	f.Close()
 
-        return SendClientStatus(res, 1)
+        return net.SendClientStatus(res, 1)
 }
 
 func (self *Action) Delete(user string, dir string, file string) (int) {
@@ -73,7 +84,7 @@ func (self *Action) Delete(user string, dir string, file string) (int) {
 	res := self.res
 	fi, err := os.Stat(path)
 	if err != nil {
-                return SendClientStatus(res, 0)
+                return net.SendClientStatus(res, 0)
 	}
 
 	mode := fi.Mode()
@@ -90,7 +101,7 @@ func (self *Action) Delete(user string, dir string, file string) (int) {
 		}
 	}
 
-        return SendClientStatus(res, 1)
+        return net.SendClientStatus(res, 1)
 }
 
 func (self *Action) Process(user string, dir string, file string) {

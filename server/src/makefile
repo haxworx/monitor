@@ -1,4 +1,4 @@
-SOURCES=main.go auth.go action.go net.go
+SOURCES=dropsyd.go 
 
 default:
 	go run $(SOURCES)

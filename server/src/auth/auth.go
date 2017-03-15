@@ -1,4 +1,4 @@
-package main
+package auth
 // as always a work in progres...
 
 import(
@@ -8,7 +8,10 @@ import(
 	"net/http"
 	"os"
         "time"
+	"../net"
 )
+
+const PASSWD_FILE = "config/passwd"
 
 type User struct {
         uid int32
@@ -21,6 +24,22 @@ type Auth struct {
         Users map[string]User
         last_update int64
         have_auth_data bool 
+}
+
+func New() (*Auth) {
+	this := new(Auth)
+	this.have_auth_data = false
+        
+	if _, err := os.Stat(PASSWD_FILE); err != nil {
+                if os.IsNotExist(err) {
+                        fmt.Printf("FATAL: (%s) does not exist!\n", PASSWD_FILE)
+                } else {
+                        fmt.Printf("FATAL: cannot stat() (%s)!\n", PASSWD_FILE)
+                }
+                os.Exit(0)
+        }
+
+	return this
 }
 
 func (self *Auth) LoadFromFile() (bool) {
@@ -59,21 +78,24 @@ func (self *Auth) LoadFromFile() (bool) {
         return true
 }
 
-func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess string) (int) {
+func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess string) (bool) {
         if !self.have_auth_data {
                 self.Users = make(map[string]User)
                 self.LoadFromFile()
         }
 
         if self.Users[user_guess].username != user_guess {
-                return SendClientStatus(res, 0)
+                net.SendClientStatus(res, 0)
+		return false
         }
 
         if self.Users[user_guess].password != pass_guess {
-                return SendClientStatus(res, 0)
+                net.SendClientStatus(res, 0)
+		return false
         }
 
         /* Works! */
-        return SendClientStatus(res, 1)
+ 	net.SendClientStatus(res, 1)
+	return true
 }
 

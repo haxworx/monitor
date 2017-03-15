@@ -1,4 +1,5 @@
-package main
+package net
+
 import (
         "fmt"
         "net/http"
