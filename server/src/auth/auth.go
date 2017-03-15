@@ -5,10 +5,8 @@ import(
 	"fmt"
         "bufio"
 	"strings"
-	"net/http"
 	"os"
         "time"
-	"../net"
 )
 
 const PASSWD_FILE = "config/passwd"
@@ -23,19 +21,15 @@ type User struct {
 type Auth struct {
         Users map[string]User
         last_update int64
-        have_auth_data bool 
+        initialized bool 
 }
 
 func New() (*Auth) {
 	this := new(Auth)
-	this.have_auth_data = false
+	this.initialized = false
         
 	if _, err := os.Stat(PASSWD_FILE); err != nil {
-                if os.IsNotExist(err) {
-                        fmt.Printf("FATAL: (%s) does not exist!\n", PASSWD_FILE)
-                } else {
-                        fmt.Printf("FATAL: cannot stat() (%s)!\n", PASSWD_FILE)
-                }
+        	fmt.Printf("%s!\n", err)
                 os.Exit(0)
         }
 
@@ -45,7 +39,7 @@ func New() (*Auth) {
 func (self *Auth) LoadFromFile() (bool) {
         f, err := os.Open(PASSWD_FILE)
         if err != nil {
-                fmt.Printf("FATAL: no credentials file found (%s)!\n", PASSWD_FILE)
+                fmt.Printf("%s!\n", err)
                 os.Exit(0)
         }
 
@@ -72,30 +66,27 @@ func (self *Auth) LoadFromFile() (bool) {
                 self.Users[tmp_user] = tmp
         }
 
-        self.have_auth_data = true
+        self.initialized = true
         self.last_update = time.Now().Unix()
 
         return true
 }
 
-func (self *Auth) Check(res http.ResponseWriter, user_guess string, pass_guess string) (bool) {
-        if !self.have_auth_data {
+func (self *Auth) Check(user_guess string, pass_guess string) (bool) {
+        if !self.initialized {
                 self.Users = make(map[string]User)
                 self.LoadFromFile()
         }
 
         if self.Users[user_guess].username != user_guess {
-                net.SendClientStatus(res, 0)
 		return false
         }
 
         if self.Users[user_guess].password != pass_guess {
-                net.SendClientStatus(res, 0)
 		return false
         }
 
         /* Works! */
- 	net.SendClientStatus(res, 1)
 	return true
 }
 

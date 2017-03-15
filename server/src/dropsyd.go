@@ -3,8 +3,9 @@ package main
 import(
         "fmt"
         "net/http"
-        "./action"
 	"./auth"
+        "./action"
+	"./net"
 )
 
 const URL = "/any"
@@ -25,8 +26,11 @@ func HandleRequest(res http.ResponseWriter, req *http.Request) {
 			headers[name] = req.Header.Get(name)
 		}
 
-		if success := authSystem.Check(res, headers["username"],headers["password"]); success != true {
+		if success := authSystem.Check(headers["username"], headers["password"]); success != true {
+			net.SendClientStatus(res, 0)
 			return
+		} else {
+			net.SendClientStatus(res, 1)
 		}
 
 		action := action.New(req, res, headers["action"])
