@@ -11,8 +11,6 @@ const POST_PATH = "/any"
 const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 
-var authSystem *auth.Auth
-
 func ClientSendStatus(res http.ResponseWriter, ok bool) (int) {
 	value := 0
 	if ok {
@@ -24,7 +22,7 @@ func ClientSendStatus(res http.ResponseWriter, ok bool) (int) {
         return value
 }
 
-func HandleRequest(res http.ResponseWriter, req *http.Request) {
+func HandleRequest(res http.ResponseWriter, req *http.Request, authSystem *auth.Auth) {
 	if req.Method == "POST" {
 		var header_list = []string {
 			"username", "password", "action", "directory", "filename",
@@ -37,8 +35,7 @@ func HandleRequest(res http.ResponseWriter, req *http.Request) {
 		}
 
 		status := authSystem.Check(headers["username"], headers["password"])
-		ClientSendStatus(res, status)
-		if status != true {
+		ClientSendStatus(res, status); if status != true {
 			return
 		}
 
@@ -51,8 +48,9 @@ func HandleRequest(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func Server() {
-        http.HandleFunc(POST_PATH, HandleRequest)
+func Server(authSystem *auth.Auth) {
+        http.HandleFunc(POST_PATH, func (w http.ResponseWriter, r *http.Request) {
+					HandleRequest(w, r, authSystem)})
         if err := http.ListenAndServeTLS(":12345", CERT_FILE, CERT_KEY_FILE, nil); err != nil {
                 fmt.Printf("%s!\n", err)
         }
@@ -65,8 +63,8 @@ func ShowAbout() {
 }
 
 func main() {
-        authSystem = auth.New()
+        authSystem := auth.New()
 	ShowAbout()
-	Server()
+	Server(authSystem)
 }
 
