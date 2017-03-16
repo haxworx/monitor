@@ -5,7 +5,6 @@ import(
         "net/http"
 	"./auth"
         "./action"
-	"./net"
 )
 
 const POST_PATH = "/any"
@@ -13,6 +12,17 @@ const CERT_FILE = "config/server.crt"
 const CERT_KEY_FILE = "config/server.key"
 
 var authSystem *auth.Auth
+
+func ClientSendStatus(res http.ResponseWriter, ok bool) (int) {
+	value := 0
+	if ok {
+		value = 1
+	} 
+
+        var status = fmt.Sprintf("status: %d\r\n\r\n", value)
+        res.Write([]byte(status))
+        return value
+}
 
 func HandleRequest(res http.ResponseWriter, req *http.Request) {
 	if req.Method == "POST" {
@@ -26,15 +36,16 @@ func HandleRequest(res http.ResponseWriter, req *http.Request) {
 			headers[name] = req.Header.Get(name)
 		}
 
-		if success := authSystem.Check(headers["username"], headers["password"]); success != true {
-			net.SendClientStatus(res, 0)
+		status := authSystem.Check(headers["username"], headers["password"])
+		ClientSendStatus(res, status)
+		if status != true {
 			return
-		} else {
-			net.SendClientStatus(res, 1)
 		}
 
-		action := action.New(req, res, headers["action"])
-		action.Process(headers["username"], headers["directory"], headers["filename"])
+		action := action.New(req.Body, headers["action"])
+		status = action.Process(headers["username"], headers["directory"], headers["filename"])
+		ClientSendStatus(res, status)
+
 	} else {
                 http.Error(res, "unsupported method!", http.StatusBadRequest)
 	}

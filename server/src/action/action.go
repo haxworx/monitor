@@ -3,11 +3,10 @@ package action
 import(
 	"fmt"
 	"strings"
-	"net/http"
 	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
-	"../net"
 )
 
 const STORAGE_ROOT = "storage"
@@ -28,28 +27,24 @@ func DirIsEmpty(directory string) bool {
 
 
 type Action struct {
-	res http.ResponseWriter
-	req *http.Request
 	action string
+	reader io.Reader
 }
 
-func New(req *http.Request, res http.ResponseWriter, action string) (*Action) {
+func New(reader io.Reader, action string) (*Action) {
 	this := new(Action)
-	this.req = req
-	this.res = res
 	this.action = action
-
+	this.reader = reader
+	
 	return this
 }
 
-func (self *Action) Save(user string, dir string, file string) int {
-	res := self.res
-	req := self.req
+func (self *Action) Save(user string, dir string, file string) (bool) {
 
-	var buf = req.Body;
+	var buf = self.reader;
 
-	if dir == "" || file == "" {
-                return net.SendClientStatus(res, 0)
+	if user == "" || dir == "" || file == "" {
+                return false
         }
 
 	var path = filepath.Join(STORAGE_ROOT, user, dir)
@@ -57,7 +52,7 @@ func (self *Action) Save(user string, dir string, file string) int {
 
 	bytes, err := ioutil.ReadAll(buf)
 	if err != nil {
-                return net.SendClientStatus(res, 0)
+		return false
 	}
 
 	path = filepath.Join(STORAGE_ROOT, user, dir, file)
@@ -65,26 +60,24 @@ func (self *Action) Save(user string, dir string, file string) int {
 	fmt.Printf("create %s\n", path)
 	f, err := os.Create(path)
         if err != nil {
-                fmt.Printf("FATAL: could not create: %s!\n", path)
-                net.SendClientStatus(res, 0)
-                os.Exit(1)
+                fmt.Printf("ERROR: could not create: %s!\n", path)
+		return false
         }
 
 	f.Write(bytes)
 	f.Close()
 
-        return net.SendClientStatus(res, 1)
+        return true
 }
 
-func (self *Action) Delete(user string, dir string, file string) (int) {
-	if dir == "" || file == "" { return 0 }
+func (self *Action) Delete(user string, dir string, file string) (bool) {
+	if user == "" || dir == "" || file == "" { return false }
 	var path = filepath.Join(STORAGE_ROOT, user, dir, file)
 	fmt.Printf("remove %s\n", path)
 
-	res := self.res
 	fi, err := os.Stat(path)
 	if err != nil {
-                return net.SendClientStatus(res, 0)
+		return false
 	}
 
 	mode := fi.Mode()
@@ -101,16 +94,19 @@ func (self *Action) Delete(user string, dir string, file string) (int) {
 		}
 	}
 
-        return net.SendClientStatus(res, 1)
+	return true
 }
 
-func (self *Action) Process(user string, dir string, file string) {
+func (self *Action) Process(user string, dir string, file string) (bool) {
+	result := true
 	switch self.action {
 	case "ADD":
-		self.Save(user, dir, file)
+		result = self.Save(user, dir, file)
 	case "DEL":
-		self.Delete(user, dir, file)
+		result = self.Delete(user, dir, file)
 	}
+
+	return result
 }
 
 
