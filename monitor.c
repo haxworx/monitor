@@ -95,13 +95,14 @@ _notify_engine_fallback(notify_t *notify)
 {
    list_t *l, *l2;
    file_info_t *file, *file2;
-   const char *directory = notify->path;
 
    list_t *next_list = list_new();
 
    file = malloc(sizeof(file_info_t));
-   file->path = strdup(directory);
-   file->st = *file_path_stat(directory);
+   file->path = strdup(notify->path);
+   stat_t *tmp = file_path_stat(notify->path);
+   file->st = *tmp;
+   free(tmp);
 
    next_list = list_add(next_list, file);
 
@@ -321,7 +322,7 @@ _change_cb(const char *path, notify_event_t type, void *data)
 int
 main(void)
 {
-   const char *path = "/usr/home/netstar";
+   const char *path = "/home/netstar";
 
    notify_t *notify = notify_new();
 
