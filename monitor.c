@@ -4,44 +4,46 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-typedef enum {
-   MONITOR_EVENT_CALLBACK_FILE_ADD,
-   MONITOR_EVENT_CALLBACK_FILE_DEL,
-   MONITOR_EVENT_CALLBACK_FILE_MOD,
-   MONITOR_EVENT_CALLBACK_DIR_ADD,
-   MONITOR_EVENT_CALLBACK_DIR_DEL,
-   MONITOR_EVENT_CALLBACK_DIR_MOD,
-} monitor_event_t;
+typedef enum
+{
+   NOTIFY_EVENT_CALLBACK_FILE_ADD,
+   NOTIFY_EVENT_CALLBACK_FILE_DEL,
+   NOTIFY_EVENT_CALLBACK_FILE_MOD,
+   NOTIFY_EVENT_CALLBACK_DIR_ADD,
+   NOTIFY_EVENT_CALLBACK_DIR_DEL,
+   NOTIFY_EVENT_CALLBACK_DIR_MOD,
+} notify_event_t;
 
-typedef void (*callback_fn)(const char *path, monitor_event_t type, void *data);
+typedef void (*notify_callback_fn)(const char *path, notify_event_t type, void *data);
 
-typedef struct monitor_t {
-   char *path;
-   list_t *prev_list;
-   int         enabled;
+typedef struct notify_t
+{
+   char                *path;
+   list_t              *prev_list;
+   int                  enabled;
 
-   pthread_t   thread;
-   callback_fn file_added_cb;
-   callback_fn file_deleted_cb;
-   callback_fn file_modified_cb;
+   pthread_t            thread;
+   notify_callback_fn file_added_cb;
+   notify_callback_fn file_deleted_cb;
+   notify_callback_fn file_modified_cb;
 
-   callback_fn dir_added_cb;
-   callback_fn dir_deleted_cb;
-   callback_fn dir_modified_cb;
+   notify_callback_fn dir_added_cb;
+   notify_callback_fn dir_deleted_cb;
+   notify_callback_fn dir_modified_cb;
 
-   void       *file_added_data;
-   void       *file_deleted_data;
-   void       *file_modified_data;
+   void                *file_added_data;
+   void                *file_deleted_data;
+   void                *file_modified_data;
 
-   void       *dir_added_data;
-   void       *dir_deleted_data;
-   void       *dir_modified_data;
-} monitor_t;
+   void                *dir_added_data;
+   void                *dir_deleted_data;
+   void                *dir_modified_data;
+} notify_t;
 
 typedef struct file_info_t
 {
-   stat_t st; 
-   char *path;
+   stat_t st;
+   char  *path;
 } file_info_t;
 
 static int
@@ -52,7 +54,7 @@ _path_scan_cb(const char *path, stat_t *st, void *data)
 
    entry = malloc(sizeof(file_info_t));
    entry->path = strdup(path);
-   entry->st = *st; 
+   entry->st = *st;
 
    l = list_add(l, entry);
 
@@ -60,7 +62,7 @@ _path_scan_cb(const char *path, stat_t *st, void *data)
 }
 
 static void
-_file_list_free(list_t *next_list)
+_notify_file_list_free(list_t *next_list)
 {
    list_t *next, *node = next_list;
    file_info_t *file;
@@ -89,11 +91,11 @@ _cmp_cb(void *p1, void *p2)
 }
 
 static void
-_monitor_engine_fallback(monitor_t *monitor)
+_notify_engine_fallback(notify_t *notify)
 {
    list_t *l, *l2;
    file_info_t *file, *file2;
-   const char *directory = monitor->path;
+   const char *directory = notify->path;
 
    list_t *next_list = list_new();
 
@@ -103,10 +105,10 @@ _monitor_engine_fallback(monitor_t *monitor)
 
    next_list = list_add(next_list, file);
 
-   file_path_walk(monitor->path, _path_scan_cb, next_list); 
+   file_path_walk(notify->path, _path_scan_cb, next_list);
 
-   l = monitor->prev_list;
-   while (l) 
+   l = notify->prev_list;
+   while (l)
      {
         file = l->data;
         bool exists = false;
@@ -123,37 +125,37 @@ _monitor_engine_fallback(monitor_t *monitor)
                     {
                        if (S_ISDIR(file->st.mode))
                          {
-                            if (monitor->dir_modified_cb)
+                            if (notify->dir_modified_cb)
                               {
-                                 monitor->dir_modified_cb(file->path, MONITOR_EVENT_CALLBACK_DIR_MOD, monitor->dir_modified_data);
+                                 notify->dir_modified_cb(file->path, NOTIFY_EVENT_CALLBACK_DIR_MOD, notify->dir_modified_data);
                               }
                          }
                        else
                          {
-                            if (monitor->file_modified_cb)
+                            if (notify->file_modified_cb)
                               {
-                                 monitor->file_modified_cb(file->path, MONITOR_EVENT_CALLBACK_FILE_MOD, monitor->file_modified_data);
+                                 notify->file_modified_cb(file->path, NOTIFY_EVENT_CALLBACK_FILE_MOD, notify->file_modified_data);
                               }
                          }
                     }
                }
              l2 = l2->next;
           }
-     
+
         if (!exists)
           {
              if (S_ISDIR(file->st.mode))
                {
-                  if (monitor->dir_deleted_cb)
+                  if (notify->dir_deleted_cb)
                     {
-                       monitor->dir_deleted_cb(file->path, MONITOR_EVENT_CALLBACK_DIR_DEL, monitor->dir_deleted_data);
+                       notify->dir_deleted_cb(file->path, NOTIFY_EVENT_CALLBACK_DIR_DEL, notify->dir_deleted_data);
                     }
                }
              else
                {
-                  if (monitor->file_deleted_cb)
+                  if (notify->file_deleted_cb)
                     {
-                       monitor->file_deleted_cb(file->path, MONITOR_EVENT_CALLBACK_FILE_DEL, monitor->file_deleted_data);
+                       notify->file_deleted_cb(file->path, NOTIFY_EVENT_CALLBACK_FILE_DEL, notify->file_deleted_data);
                     }
                }
           }
@@ -162,16 +164,16 @@ _monitor_engine_fallback(monitor_t *monitor)
      }
 
    l = next_list;
-   while (l && monitor->prev_list)
+   while (l && notify->prev_list)
      {
         file = l->data;
         bool exists = false;
-        l2 = monitor->prev_list;
+        l2 = notify->prev_list;
         while (l2)
           {
              file2 = l2->data;
              if ((file->st.inode == file2->st.inode) &&
-                  (!strcmp(file->path, file2->path)))
+                 (!strcmp(file->path, file2->path)))
                {
                   exists = true;
                   break;
@@ -179,162 +181,175 @@ _monitor_engine_fallback(monitor_t *monitor)
 
              l2 = l2->next;
           }
-       if (!exists)
-         {
-            if (S_ISDIR(file->st.mode))
-              {
-                 if (monitor->dir_added_cb)
-                   monitor->dir_added_cb(file->path, MONITOR_EVENT_CALLBACK_DIR_ADD, monitor->dir_added_data);
-              }
-            else
-              {
-                 if (monitor->file_added_cb)
-                   monitor->file_added_cb(file->path, MONITOR_EVENT_CALLBACK_FILE_ADD, monitor->file_added_data);
-              }
+        if (!exists)
+          {
+             if (S_ISDIR(file->st.mode))
+               {
+                  if (notify->dir_added_cb)
+                    notify->dir_added_cb(file->path, NOTIFY_EVENT_CALLBACK_DIR_ADD, notify->dir_added_data);
+               }
+             else
+               {
+                  if (notify->file_added_cb)
+                    notify->file_added_cb(file->path, NOTIFY_EVENT_CALLBACK_FILE_ADD, notify->file_added_data);
+               }
           }
         l = l->next;
      }
 
-   _file_list_free(monitor->prev_list);
+   _notify_file_list_free(notify->prev_list);
 
-   monitor->prev_list = next_list;
+   notify->prev_list = next_list;
 }
 
-void
-monitor_watch(monitor_t *monitor)
+static void
+_notify_watch(notify_t *notify)
 {
-   if (!monitor->path) return;
+   if (!notify->path) return;
 
-   while (monitor->enabled)
+   while (notify->enabled)
      {
-        _monitor_engine_fallback(monitor);
+        _notify_engine_fallback(notify);
         sleep(2);
      }
 
-   _file_list_free(monitor->prev_list);
-}
-
-static void *_monitor_watch_thread_cb(void *arg)
-{
-   monitor_t *monitor = arg;
-
-   monitor_watch(monitor);
-
-   return ((void *) 0);
-}
-void
-monitor_path_set(monitor_t *monitor, const char *directory)
-{
-   monitor->path = strdup(directory);
-}
-
-int
-monitor_bg_start(monitor_t *monitor)
-{
-  int error = pthread_create(&monitor->thread, NULL, _monitor_watch_thread_cb, monitor);
-  if (!error)
-    monitor->enabled = true;
-
-  return error;
+   _notify_file_list_free(notify->prev_list);
 }
 
 void
-monitor_free(monitor_t *monitor)
-{
-   free(monitor->path);
-   free(monitor);
-}
-
-monitor_t *
-monitor_new(void)
-{
-   monitor_t *monitor;
-
-   monitor = calloc(1, sizeof(monitor_t));
-   monitor->prev_list = list_new();
-
-
-   return monitor;
-}
-
-void monitor_stop(monitor_t *monitor)
+notify_stop_wait(notify_t *notify)
 {
    void *ret = NULL;
 
-   monitor->enabled = false;
+   notify->enabled = false;
 
-   pthread_join(monitor->thread, ret);
+   pthread_join(notify->thread, ret);
 }
 
-static void
-monitor_event_callback_set(monitor_t *monitor, monitor_event_t type, callback_fn func, void *data)
+static void *
+_notify_watch_thread_cb(void *arg)
 {
-   switch (type) {
-      case MONITOR_EVENT_CALLBACK_FILE_ADD:
-         monitor->file_added_cb = func;
-         monitor->file_added_data = data;
-      break;
+   notify_t *notify = arg;
 
-      case MONITOR_EVENT_CALLBACK_FILE_MOD:
-         monitor->file_modified_cb = func;
-         monitor->file_modified_data = data;
-      break;
+   _notify_watch(notify);
 
-      case MONITOR_EVENT_CALLBACK_FILE_DEL:
-         monitor->file_deleted_cb = func;
-         monitor->file_deleted_data = data;
-      break;
+   return (void *)0;
+}
 
-      case MONITOR_EVENT_CALLBACK_DIR_ADD:
-         monitor->dir_added_cb = func;
-         monitor->dir_added_data = data;
-      break;
+int
+notify_background_run(notify_t *notify)
+{
+   int error;
 
-      case MONITOR_EVENT_CALLBACK_DIR_MOD:
-         monitor->dir_modified_cb = func;
-         monitor->dir_modified_data = data;
-      break;
+   if (!file_path_exists(notify->path))
+     return 1;
 
-      case MONITOR_EVENT_CALLBACK_DIR_DEL:
-         monitor->dir_deleted_cb = func;
-         monitor->dir_modified_data = data;
-      break;
-   };
+   error = pthread_create(&notify->thread, NULL, _notify_watch_thread_cb, notify);
+   if (!error)
+     notify->enabled = true;
+
+   return error;
+}
+
+void
+notify_free(notify_t *notify)
+{
+   free(notify->path);
+   free(notify);
+}
+
+notify_t *
+notify_new(void)
+{
+   notify_t *notify;
+
+   notify = calloc(1, sizeof(notify_t));
+   notify->prev_list = list_new();
+
+   return notify;
+}
+
+void
+notify_path_set(notify_t *notify, const char *directory)
+{
+   notify->path = strdup(directory);
 }
 
 static void
-_monitor_change_cb(const char *path, monitor_event_t type, void *data)
+notify_event_callback_set(notify_t *notify, notify_event_t type, notify_callback_fn func, void *data)
+{
+   switch (type)
+     {
+      case NOTIFY_EVENT_CALLBACK_FILE_ADD:
+        notify->file_added_cb = func;
+        notify->file_added_data = data;
+        break;
+
+      case NOTIFY_EVENT_CALLBACK_FILE_MOD:
+        notify->file_modified_cb = func;
+        notify->file_modified_data = data;
+        break;
+
+      case NOTIFY_EVENT_CALLBACK_FILE_DEL:
+        notify->file_deleted_cb = func;
+        notify->file_deleted_data = data;
+        break;
+
+      case NOTIFY_EVENT_CALLBACK_DIR_ADD:
+        notify->dir_added_cb = func;
+        notify->dir_added_data = data;
+        break;
+
+      case NOTIFY_EVENT_CALLBACK_DIR_MOD:
+        notify->dir_modified_cb = func;
+        notify->dir_modified_data = data;
+        break;
+
+      case NOTIFY_EVENT_CALLBACK_DIR_DEL:
+        notify->dir_deleted_cb = func;
+        notify->dir_modified_data = data;
+        break;
+     }
+}
+
+static void
+_change_cb(const char *path, notify_event_t type, void *data)
 {
    printf("change %s and type %d\n", path, type);
 }
 
-int main(void)
+int
+main(void)
 {
-   list_t *l;
-   file_info_t *file; 
    const char *path = "/usr/home/netstar";
 
-   monitor_t *monitor = monitor_new();
+   notify_t *notify = notify_new();
 
-   monitor_path_set(monitor, path);
+   notify_path_set(notify, path);
 
-   monitor_event_callback_set(monitor, MONITOR_EVENT_CALLBACK_FILE_ADD, _monitor_change_cb, NULL);
-   monitor_event_callback_set(monitor, MONITOR_EVENT_CALLBACK_FILE_DEL, _monitor_change_cb, NULL);
-   monitor_event_callback_set(monitor, MONITOR_EVENT_CALLBACK_FILE_MOD, _monitor_change_cb, NULL);
-   monitor_event_callback_set(monitor, MONITOR_EVENT_CALLBACK_DIR_ADD, _monitor_change_cb, NULL);
-   monitor_event_callback_set(monitor, MONITOR_EVENT_CALLBACK_DIR_DEL, _monitor_change_cb, NULL);
-   monitor_event_callback_set(monitor, MONITOR_EVENT_CALLBACK_DIR_MOD, _monitor_change_cb, NULL);
+   notify_event_callback_set(notify, NOTIFY_EVENT_CALLBACK_FILE_ADD, _change_cb, NULL);
+   notify_event_callback_set(notify, NOTIFY_EVENT_CALLBACK_FILE_DEL, _change_cb, NULL);
+   notify_event_callback_set(notify, NOTIFY_EVENT_CALLBACK_FILE_MOD, _change_cb, NULL);
+   notify_event_callback_set(notify, NOTIFY_EVENT_CALLBACK_DIR_ADD, _change_cb, NULL);
+   notify_event_callback_set(notify, NOTIFY_EVENT_CALLBACK_DIR_DEL, _change_cb, NULL);
+   notify_event_callback_set(notify, NOTIFY_EVENT_CALLBACK_DIR_MOD, _change_cb, NULL);
 
-   monitor_bg_start(monitor);
+   int res = notify_background_run(notify);
+   if (res)
+     {
+        fprintf(stderr, "failed to put notify into the background!");
+        exit(EXIT_FAILURE);
+     }
 
-   for (int i = 0;i < 20; i++) {
-   sleep(1);
-   printf("other code!\n");
-   }
+   for (int i = 0; i < 20; i++) {
+        sleep(1);
+        printf("other code!\n");
+     }
 
-   monitor_stop(monitor);
+   notify_stop_wait(notify);
 
-   monitor_free(monitor);
+   notify_free(notify);
 
    return EXIT_SUCCESS;
 }
+
