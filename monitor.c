@@ -238,6 +238,13 @@ monitor_bg_start(monitor_t *monitor)
   return error;
 }
 
+void
+monitor_free(monitor_t *monitor)
+{
+   free(monitor->path);
+   free(monitor);
+}
+
 monitor_t *
 monitor_new(void)
 {
@@ -305,7 +312,7 @@ int main(void)
 {
    list_t *l;
    file_info_t *file; 
-   const char *path = "/home/netstar";
+   const char *path = "/usr/home/netstar";
 
    monitor_t *monitor = monitor_new();
 
@@ -326,6 +333,8 @@ int main(void)
    }
 
    monitor_stop(monitor);
+
+   monitor_free(monitor);
 
    return EXIT_SUCCESS;
 }
